@@ -25,6 +25,9 @@ export const metadata: Metadata = {
   description:
     "Experience truly decentralized communication with your ENS identity. Own your conversations, protect your privacy, and connect with the Web3 community.",
   generator: "v0.app",
+  icons: {
+    icon: "/favicon.ico",
+  },
 }
 
 export default function RootLayout({
