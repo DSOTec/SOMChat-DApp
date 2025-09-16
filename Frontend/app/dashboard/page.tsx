@@ -1,6 +1,6 @@
 "use client"
 
-import { SupabaseChatDashboard } from "@/components/supabase-chat-dashboard"
+import { OptimizedChatDashboard } from "@/components/optimized-chat-dashboard"
 import { Suspense } from "react"
 import { Loader2 } from "lucide-react"
 
@@ -15,7 +15,7 @@ function DashboardLoading() {
 export default function DashboardPage() {
   return (
     <Suspense fallback={<DashboardLoading />}>
-      <SupabaseChatDashboard />
+      <OptimizedChatDashboard />
     </Suspense>
   )
 }
