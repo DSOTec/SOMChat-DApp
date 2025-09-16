@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { MessageCircle, Upload, Wallet, ArrowRight, CheckCircle } from "lucide-react"
 import Link from "next/link"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export function ENSRegistration() {
   const [ensName, setEnsName] = useState("")
@@ -53,42 +54,46 @@ export function ENSRegistration() {
               <div className="w-8 h-8 rounded-lg gradient-bg flex items-center justify-center">
                 <MessageCircle className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-semibold text-foreground">ChatDApp</span>
+              <span className="text-xl font-semibold text-foreground">SOMChat</span>
             </Link>
 
-            <Badge variant="secondary" className="flex items-center gap-2">
-              <CheckCircle className="w-3 h-3" />
-              Wallet Connected
-            </Badge>
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <Badge variant="secondary" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3">
+                <CheckCircle className="w-3 h-3" />
+                <span className="hidden sm:inline">Wallet Connected</span>
+                <span className="sm:hidden">Connected</span>
+              </Badge>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
+      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
+        <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg">
           <Card className="glow-hover">
-            <CardHeader className="text-center space-y-4">
+            <CardHeader className="text-center space-y-4 p-4 sm:p-6">
               <div className="w-16 h-16 rounded-full gradient-bg flex items-center justify-center mx-auto">
                 <Wallet className="w-8 h-8 text-white" />
               </div>
               <div>
-                <CardTitle className="text-2xl font-bold">Setup Your Profile</CardTitle>
-                <CardDescription className="text-base mt-2">
+                <CardTitle className="text-xl sm:text-2xl font-bold">Setup Your Profile</CardTitle>
+                <CardDescription className="text-sm sm:text-base mt-2">
                   Complete your ENS registration to start chatting
                 </CardDescription>
               </div>
             </CardHeader>
 
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 p-4 sm:p-6">
               {/* Wallet Address Display */}
-              <div className="p-4 rounded-lg bg-muted/50 border border-border/50">
+              <div className="p-3 sm:p-4 rounded-lg bg-muted/50 border border-border/50">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Connected Wallet</Label>
-                    <p className="font-mono text-sm mt-1">{walletAddress}</p>
+                  <div className="min-w-0 flex-1">
+                    <Label className="text-xs sm:text-sm font-medium text-muted-foreground">Connected Wallet</Label>
+                    <p className="font-mono text-xs sm:text-sm mt-1 break-all">{walletAddress}</p>
                   </div>
-                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <div className="w-2 h-2 rounded-full bg-green-500 ml-2 shrink-0"></div>
                 </div>
               </div>
 
@@ -105,7 +110,7 @@ export function ENSRegistration() {
                       placeholder="yourname"
                       value={ensName}
                       onChange={(e) => setEnsName(e.target.value)}
-                      className="pr-12"
+                      className="pr-12 text-sm sm:text-base"
                       required
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">.eth</div>
@@ -117,18 +122,18 @@ export function ENSRegistration() {
                 <div className="space-y-4">
                   <Label className="text-sm font-medium">Profile Image</Label>
 
-                  <div className="flex items-center gap-4">
-                    <Avatar className="w-16 h-16">
+                  <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <Avatar className="w-16 h-16 sm:w-20 sm:h-20 shrink-0">
                       <AvatarImage src={profileImage || undefined} />
-                      <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
+                      <AvatarFallback className="bg-primary/10 text-primary text-lg sm:text-xl font-semibold">
                         {ensName ? ensName.charAt(0).toUpperCase() : "?"}
                       </AvatarFallback>
                     </Avatar>
 
-                    <div className="flex-1">
+                    <div className="flex-1 w-full sm:w-auto text-center sm:text-left">
                       <Label
                         htmlFor="profileImage"
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-background hover:bg-muted/50 cursor-pointer transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-background hover:bg-muted/50 cursor-pointer transition-colors text-sm"
                       >
                         <Upload className="w-4 h-4" />
                         Upload Image
@@ -146,15 +151,20 @@ export function ENSRegistration() {
                 </div>
 
                 {/* Submit Button */}
-                <Button type="submit" className="w-full glow-hover" size="lg" disabled={!ensName.trim() || isLoading}>
+                <Button
+                  type="submit"
+                  className="w-full glow-hover text-sm sm:text-base py-2 sm:py-3"
+                  size="lg"
+                  disabled={!ensName.trim() || isLoading}
+                >
                   {isLoading ? (
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      Registering...
+                      <span className="text-sm sm:text-base">Registering...</span>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
-                      Save & Continue
+                      <span className="text-sm sm:text-base">Save & Continue</span>
                       <ArrowRight className="w-4 h-4" />
                     </div>
                   )}
@@ -162,7 +172,7 @@ export function ENSRegistration() {
               </form>
 
               <div className="text-center">
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground px-2">
                   Your ENS name will serve as your username. Profile image is stored on IPFS.
                 </p>
               </div>

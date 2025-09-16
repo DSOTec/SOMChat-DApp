@@ -1,10 +1,16 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Wallet, MessageCircle, Shield, Users, Globe, Zap } from "lucide-react"
+import { Wallet, MessageCircle, Shield, Users, Globe, Zap, Mail, Github, Twitter } from "lucide-react"
 import Link from "next/link"
+import { useState } from "react"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export function LandingPage() {
+  const [isMobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -15,30 +21,61 @@ export function LandingPage() {
               <div className="w-8 h-8 rounded-lg gradient-bg flex items-center justify-center">
                 <MessageCircle className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-semibold text-foreground">ChatDApp</span>
+              <span className="text-xl font-semibold text-foreground">SOMChat</span>
             </div>
 
-            <div className="hidden md:flex items-center space-x-8">
-              <Link href="#how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">
+            <div className="md:hidden flex items-center space-x-2">
+              <ThemeToggle />
+              <button
+                onClick={() => setMobileMenuOpen(!isMobileMenuOpen)}
+                className="text-muted-foreground hover:text-foreground transition-colors p-2"
+                aria-label="Toggle menu"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
+
+            <div
+              className={`${isMobileMenuOpen ? "absolute top-16 left-0 right-0 bg-background border-b border-border/50 p-4 space-y-4" : "hidden"} md:flex md:items-center md:space-x-8 md:static md:bg-transparent md:border-0 md:p-0 md:space-y-0`}
+            >
+              <Link
+                href="#how-it-works"
+                className="block text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
                 How it Works
               </Link>
-              <Link href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
+              <Link
+                href="#features"
+                className="block text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
                 Features
               </Link>
-              <Link href="#about" className="text-muted-foreground hover:text-foreground transition-colors">
+              <Link
+                href="#about"
+                className="block text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
                 About
               </Link>
-              <Link href="#contact" className="text-muted-foreground hover:text-foreground transition-colors">
+              <Link
+                href="#contact"
+                className="block text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
                 Contact
               </Link>
             </div>
 
-            <Link href="/register">
-              <Button className="glow-hover">
-                <Wallet className="w-4 h-4 mr-2" />
-                Connect Wallet
-              </Button>
-            </Link>
+            <div className="hidden md:flex items-center space-x-4">
+              <ThemeToggle />
+              <Link href="/register">
+                <Button className="glow-hover text-sm sm:text-base px-4 sm:px-6">Get Started</Button>
+              </Link>
+            </div>
           </div>
         </div>
       </nav>
@@ -46,34 +83,39 @@ export function LandingPage() {
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 gradient-bg opacity-5"></div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 relative">
-          <div className="text-center space-y-8">
-            <Badge variant="secondary" className="text-sm font-medium">
+        <div className="absolute top-10 sm:top-20 left-5 sm:left-10 w-20 sm:w-32 h-20 sm:h-32 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-10 sm:bottom-20 right-5 sm:right-10 w-24 sm:w-40 h-24 sm:h-40 bg-secondary/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 lg:py-32 relative">
+          <div className="text-center space-y-6 sm:space-y-8">
+            <Badge variant="secondary" className="text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2">
               <Zap className="w-3 h-3 mr-1" />
-              Powered by Web3
+              Powered by Web3 & ENS
             </Badge>
 
-            <h1 className="text-4xl md:text-6xl font-bold text-balance">
-              Decentralized Chat,{" "}
-              <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                Powered by Web3
-              </span>
+            <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-balance leading-tight">
+              The Future of <span className="text-primary animate-pulse">Secure Messaging</span>
             </h1>
 
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto text-pretty">
-              Connect your wallet to chat securely with your ENS identity. Experience the future of messaging with
-              complete privacy and ownership.
+            <p className="text-lg sm:text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto text-pretty leading-relaxed px-4 sm:px-0">
+              Experience truly decentralized communication with your ENS identity. Own your conversations, protect your
+              privacy, and connect with the Web3 community.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center pt-6 sm:pt-8 px-4 sm:px-0">
               <Link href="/register">
-                <Button size="lg" className="glow-hover text-lg px-8">
-                  <Wallet className="w-5 h-5 mr-2" />
-                  Connect Wallet
+                <Button
+                  size="lg"
+                  className="glow-hover text-base sm:text-lg px-8 sm:px-12 py-3 sm:py-4 h-auto font-semibold w-full sm:w-auto"
+                >
+                  Start Messaging
                 </Button>
               </Link>
-              <Button variant="outline" size="lg" className="text-lg px-8 bg-transparent">
-                Learn More
+              <Button
+                variant="outline"
+                size="lg"
+                className="text-base sm:text-lg px-8 sm:px-12 py-3 sm:py-4 h-auto bg-transparent border-2 hover:bg-muted/50 w-full sm:w-auto"
+              >
+                Explore Features
               </Button>
             </div>
           </div>
@@ -81,16 +123,16 @@ export function LandingPage() {
       </section>
 
       {/* How It Works Section */}
-      <section id="how-it-works" className="py-24 bg-muted/30">
+      <section id="how-it-works" className="py-16 sm:py-24 bg-muted/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">How It Works</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">How It Works</h2>
+            <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto px-4 sm:px-0">
               Get started with decentralized messaging in four simple steps
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
             {[
               {
                 step: "01",
@@ -135,16 +177,16 @@ export function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-24">
+      <section id="features" className="py-16 sm:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Powerful Features</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">Powerful Features</h2>
+            <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto px-4 sm:px-0">
               Everything you need for secure, decentralized communication
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
             {[
               {
                 title: "1-on-1 Chats",
@@ -183,18 +225,195 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border/50 py-12 bg-muted/30">
+      {/* About Section */}
+      <section id="about" className="py-16 sm:py-24 bg-muted/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center space-x-2 mb-4 md:mb-0">
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">About SOMChat</h2>
+            <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto px-4 sm:px-0">
+              Revolutionizing communication through decentralized technology
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            <div className="space-y-6">
+              <h3 className="text-xl sm:text-2xl font-bold">Our Mission</h3>
+              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
+                SOMChat is built on the belief that communication should be truly private, secure, and owned by users.
+                We leverage the power of Web3 technology, ENS domains, and IPFS to create a messaging platform where
+                your identity and conversations belong to you, not to centralized corporations.
+              </p>
+
+              <h3 className="text-xl sm:text-2xl font-bold pt-4">Why Decentralized?</h3>
+              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
+                Traditional messaging platforms control your data, can censor your conversations, and may compromise
+                your privacy. SOMChat eliminates these concerns by putting you in complete control of your digital
+                identity and communications through blockchain technology.
+              </p>
+
+              <div className="grid grid-cols-2 gap-6 pt-6">
+                <div className="text-center">
+                  <div className="text-2xl sm:text-3xl font-bold text-primary">100%</div>
+                  <div className="text-sm text-muted-foreground">User Owned</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl sm:text-3xl font-bold text-primary">0</div>
+                  <div className="text-sm text-muted-foreground">Data Mining</div>
+                </div>
+              </div>
+            </div>
+
+            <Card className="p-6 sm:p-8 glow-hover">
+              <CardHeader className="text-center pb-6">
+                <div className="w-16 h-16 rounded-full gradient-bg flex items-center justify-center mx-auto mb-4">
+                  <Shield className="w-8 h-8 text-white" />
+                </div>
+                <CardTitle className="text-xl">Built for Privacy</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <span className="text-sm">End-to-end encryption</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <span className="text-sm">Decentralized storage</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <span className="text-sm">No central authority</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <span className="text-sm">Open source protocol</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Contact Section */}
+      <section id="contact" className="py-16 sm:py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">Get in Touch</h2>
+            <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto px-4 sm:px-0">
+              Have questions or want to contribute? We'd love to hear from you
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-8">
+            {/* Contact Info */}
+            <div className="lg:col-span-1 space-y-6 sm:space-y-8">
+              <Card className="p-4 sm:p-6 glow-hover">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Mail className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Email Us</h3>
+                    <p className="text-sm text-muted-foreground">Get support or ask questions</p>
+                  </div>
+                </div>
+                <p className="text-sm font-mono break-all">hello@somchat.xyz</p>
+              </Card>
+
+              <Card className="p-4 sm:p-6 glow-hover">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Github className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Open Source</h3>
+                    <p className="text-sm text-muted-foreground">Contribute to the project</p>
+                  </div>
+                </div>
+                <p className="text-sm font-mono break-all">github.com/somchat</p>
+              </Card>
+
+              <Card className="p-4 sm:p-6 glow-hover">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Twitter className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Follow Updates</h3>
+                    <p className="text-sm text-muted-foreground">Latest news and features</p>
+                  </div>
+                </div>
+                <p className="text-sm font-mono break-all">@somchat_xyz</p>
+              </Card>
+            </div>
+
+            {/* Contact Form */}
+            <div className="lg:col-span-2">
+              <Card className="p-6 sm:p-8 glow-hover">
+                <CardHeader className="px-0 pt-0">
+                  <CardTitle className="text-xl">Send us a Message</CardTitle>
+                  <CardDescription>
+                    Whether you're a developer, user, or just curious about Web3 messaging, we're here to help.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="px-0 pb-0">
+                  <form className="space-y-6">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Name</label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+                          placeholder="Your name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Email</label>
+                        <input
+                          type="email"
+                          className="w-full px-3 py-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+                          placeholder="your@email.com"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Subject</label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        placeholder="What's this about?"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Message</label>
+                      <textarea
+                        rows={5}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                        placeholder="Tell us more..."
+                      ></textarea>
+                    </div>
+                    <Button className="w-full glow-hover" size="lg">
+                      Send Message
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-border/50 py-8 sm:py-12 bg-muted/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+            <div className="flex items-center space-x-2">
               <div className="w-8 h-8 rounded-lg gradient-bg flex items-center justify-center">
                 <MessageCircle className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-semibold">ChatDApp</span>
+              <span className="text-xl font-semibold">SOMChat</span>
             </div>
 
-            <div className="flex items-center space-x-6 text-sm text-muted-foreground">
+            <div className="flex items-center space-x-4 sm:space-x-6 text-sm text-muted-foreground">
               <Link href="#" className="hover:text-foreground transition-colors">
                 Terms
               </Link>
@@ -208,6 +427,10 @@ export function LandingPage() {
                 Twitter
               </Link>
             </div>
+          </div>
+
+          <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-border/50 text-center">
+            <p className="text-sm text-muted-foreground">© 2024 SOMChat. Built with ❤️ for the decentralized future.</p>
           </div>
         </div>
       </footer>

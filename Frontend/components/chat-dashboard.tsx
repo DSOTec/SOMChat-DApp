@@ -8,7 +8,21 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { CreateGroupModal } from "@/components/create-group-modal"
-import { MessageCircle, Search, Plus, Send, MoreVertical, Phone, Video, Settings, Users, Hash } from "lucide-react"
+import { ThemeToggle } from "@/components/theme-toggle"
+import {
+  MessageCircle,
+  Search,
+  Plus,
+  Send,
+  MoreVertical,
+  Phone,
+  Video,
+  Settings,
+  Users,
+  Hash,
+  Menu,
+  X,
+} from "lucide-react"
 
 interface Contact {
   id: string
@@ -43,6 +57,7 @@ export function ChatDashboard() {
   const [messageInput, setMessageInput] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false)
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [groups, setGroups] = useState<Group[]>([
     {
       id: "web3-devs",
@@ -63,7 +78,6 @@ export function ChatDashboard() {
     },
   ])
 
-  // Mock data
   const currentUser = {
     ensName: "john.eth",
     avatar: "/diverse-user-avatars.png",
@@ -150,6 +164,7 @@ export function ChatDashboard() {
 
     setGroups((prev) => [newGroup, ...prev])
     setSelectedChat(newGroup.id)
+    setIsMobileSidebarOpen(false)
     console.log("Created group:", newGroup)
   }
 
@@ -159,11 +174,26 @@ export function ChatDashboard() {
 
   const filteredGroups = groups.filter((group) => group.name.toLowerCase().includes(searchQuery.toLowerCase()))
 
+  const handleChatSelect = (chatId: string) => {
+    setSelectedChat(chatId)
+    setIsMobileSidebarOpen(false)
+  }
+
   return (
-    <div className="h-screen flex bg-background">
-      {/* Left Sidebar */}
-      <div className="w-80 border-r border-border flex flex-col bg-sidebar">
-        {/* User Profile Header */}
+    <div className="h-screen flex bg-background relative">
+      {isMobileSidebarOpen && (
+        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setIsMobileSidebarOpen(false)} />
+      )}
+
+      <div
+        className={`
+        ${isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"}
+        lg:translate-x-0 fixed lg:relative z-50 lg:z-auto
+        w-80 sm:w-96 lg:w-80 xl:w-96 h-full
+        border-r border-border flex flex-col bg-sidebar
+        transition-transform duration-300 ease-in-out
+      `}
+      >
         <div className="p-4 border-b border-sidebar-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -181,13 +211,23 @@ export function ChatDashboard() {
                 </div>
               </div>
             </div>
-            <Button variant="ghost" size="sm" className="text-sidebar-foreground">
-              <Settings className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <Button variant="ghost" size="sm" className="text-sidebar-foreground">
+                <Settings className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="lg:hidden text-sidebar-foreground"
+                onClick={() => setIsMobileSidebarOpen(false)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Search Bar */}
         <div className="p-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -200,10 +240,8 @@ export function ChatDashboard() {
           </div>
         </div>
 
-        {/* Contacts and Groups List */}
         <ScrollArea className="flex-1">
           <div className="px-4 pb-4">
-            {/* Contacts Section */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-medium text-sidebar-foreground flex items-center gap-2">
@@ -215,7 +253,7 @@ export function ChatDashboard() {
                 {filteredContacts.map((contact) => (
                   <div
                     key={contact.id}
-                    onClick={() => setSelectedChat(contact.id)}
+                    onClick={() => handleChatSelect(contact.id)}
                     className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
                       selectedChat === contact.id
                         ? "bg-sidebar-accent text-sidebar-accent-foreground"
@@ -252,7 +290,6 @@ export function ChatDashboard() {
 
             <Separator className="my-4" />
 
-            {/* Groups Section */}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-medium text-sidebar-foreground flex items-center gap-2">
@@ -272,7 +309,7 @@ export function ChatDashboard() {
                 {filteredGroups.map((group) => (
                   <div
                     key={group.id}
-                    onClick={() => setSelectedChat(group.id)}
+                    onClick={() => handleChatSelect(group.id)}
                     className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
                       selectedChat === group.id
                         ? "bg-sidebar-accent text-sidebar-accent-foreground"
@@ -305,14 +342,15 @@ export function ChatDashboard() {
         </ScrollArea>
       </div>
 
-      {/* Right Panel - Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {selectedChat ? (
           <>
-            {/* Chat Header */}
             <div className="p-4 border-b border-border bg-card">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
+                  <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setIsMobileSidebarOpen(true)}>
+                    <Menu className="w-4 h-4" />
+                  </Button>
                   <Avatar className="w-10 h-10">
                     <AvatarImage src="/alice-avatar.png" />
                     <AvatarFallback className="bg-primary/10 text-primary font-semibold">A</AvatarFallback>
@@ -323,10 +361,10 @@ export function ChatDashboard() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm">
+                  <Button variant="ghost" size="sm" className="hidden sm:flex">
                     <Phone className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="sm">
+                  <Button variant="ghost" size="sm" className="hidden sm:flex">
                     <Video className="w-4 h-4" />
                   </Button>
                   <Button variant="ghost" size="sm">
@@ -336,17 +374,16 @@ export function ChatDashboard() {
               </div>
             </div>
 
-            {/* Messages Area */}
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
                 {messages.map((message) => (
                   <div key={message.id} className={`flex ${message.isSent ? "justify-end" : "justify-start"}`}>
                     <div
-                      className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                      className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2 ${
                         message.isSent ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                       }`}
                     >
-                      <p className="text-sm">{message.content}</p>
+                      <p className="text-sm break-words">{message.content}</p>
                       <p
                         className={`text-xs mt-1 ${
                           message.isSent ? "text-primary-foreground/70" : "text-muted-foreground/70"
@@ -360,7 +397,6 @@ export function ChatDashboard() {
               </div>
             </ScrollArea>
 
-            {/* Message Input */}
             <div className="p-4 border-t border-border bg-card">
               <div className="flex items-center gap-2">
                 <Input
@@ -370,21 +406,28 @@ export function ChatDashboard() {
                   onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
                   className="flex-1"
                 />
-                <Button onClick={handleSendMessage} disabled={!messageInput.trim()} className="glow-hover">
+                <Button onClick={handleSendMessage} disabled={!messageInput.trim()} className="glow-hover shrink-0">
                   <Send className="w-4 h-4" />
                 </Button>
               </div>
             </div>
           </>
         ) : (
-          /* No Chat Selected */
           <div className="flex-1 flex items-center justify-center bg-muted/20">
-            <div className="text-center space-y-4">
+            <div className="text-center space-y-4 p-4">
+              <Button
+                variant="outline"
+                className="lg:hidden mb-4 bg-transparent"
+                onClick={() => setIsMobileSidebarOpen(true)}
+              >
+                <Menu className="w-4 h-4 mr-2" />
+                Open Chats
+              </Button>
               <div className="w-16 h-16 rounded-full gradient-bg flex items-center justify-center mx-auto">
                 <MessageCircle className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h3 className="text-xl font-semibold mb-2">Welcome to ChatDApp</h3>
+                <h3 className="text-xl font-semibold mb-2">Welcome to SOMChat</h3>
                 <p className="text-muted-foreground">Select a contact or group to start chatting</p>
               </div>
             </div>

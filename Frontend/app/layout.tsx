@@ -4,6 +4,7 @@ import { Poppins } from "next/font/google"
 import { Roboto_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
+import { ThemeProvider } from "@/components/theme-provider"
 import "./globals.css"
 
 const poppins = Poppins({
@@ -19,8 +20,9 @@ const robotoMono = Roboto_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "ChatDApp - Decentralized Chat",
-  description: "Decentralized chat powered by Web3 with ENS integration",
+  title: "SOMChat - The Future of Secure Messaging",
+  description:
+    "Experience truly decentralized communication with your ENS identity. Own your conversations, protect your privacy, and connect with the Web3 community.",
   generator: "v0.app",
 }
 
@@ -30,10 +32,12 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`font-sans ${poppins.variable} ${robotoMono.variable} antialiased`}>
-        <Suspense fallback={null}>{children}</Suspense>
-        <Analytics />
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <Suspense fallback={null}>{children}</Suspense>
+          <Analytics />
+        </ThemeProvider>
       </body>
     </html>
   )
