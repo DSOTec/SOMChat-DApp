@@ -1,5 +1,5 @@
-import { ChatDashboard } from "@/components/chat-dashboard"
+import { OptimizedChatDashboard } from "@/components/optimized-chat-dashboard"
 
 export default function DashboardPage() {
-  return <ChatDashboard />
+  return <OptimizedChatDashboard />
 }

@@ -64,15 +64,7 @@ Your Web3 ChatDApp is now fully functional with:
 
 ## 🔧 Environment Setup Required
 
-### Firebase Configuration
-Ensure these environment variables are set:
-```env
-NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
-NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abcdef
+
 ```
 
 ### WalletConnect Configuration
@@ -126,4 +118,3 @@ After successful testing, consider:
 
 ---
 
-**Congratulations! Your Web3 ChatDApp is production-ready!** 🎉
