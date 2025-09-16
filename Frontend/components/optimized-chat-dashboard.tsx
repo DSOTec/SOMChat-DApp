@@ -35,6 +35,7 @@ import {
   Menu,
   X,
   Loader2,
+  LogOut,
 } from "lucide-react"
 
 interface Group {
@@ -110,6 +111,12 @@ export function OptimizedChatDashboard() {
   const { data: isRegistered } = useIsUserRegistered(address)
   const { data: userDetails } = useUserDetails(address)
   const { data: totalGroups } = useTotalGroups()
+
+  // Handle wallet disconnect
+  const handleDisconnect = useCallback(() => {
+    disconnect()
+    router.push('/')
+  }, [disconnect, router])
 
   // Redirect if not connected or not registered
   useEffect(() => {
@@ -277,6 +284,15 @@ export function OptimizedChatDashboard() {
             </div>
             <div className="flex items-center gap-2">
               <ThemeToggle />
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-sidebar-foreground hover:text-destructive"
+                onClick={handleDisconnect}
+                title="Disconnect Wallet"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
               <Button 
                 variant="ghost" 
                 size="sm" 
