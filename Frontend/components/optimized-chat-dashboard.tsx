@@ -5,21 +5,22 @@ import { useAccount, useDisconnect } from "wagmi"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
+import { useChatApp } from "@/hooks/useChatApp"
+import { Group } from "@/lib/types"
+import { Address } from "viem"
 import { CreateGroupModal } from "@/components/create-group-modal"
 import { DeleteUserDialog } from "@/components/delete-user-dialog"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { TypingIndicator } from "@/components/typing-indicator"
 import { useTypingIndicator } from "@/hooks/useTypingIndicator"
 import { useUserRegistry } from "@/hooks/useUserRegistry"
-import { useChatApp } from "@/hooks/useChatApp"
 import { useRealtimeMessaging } from "@/hooks/useRealtimeMessaging"
 import { useOptimizedContacts } from "@/hooks/useOptimizedContacts"
 import { toast } from "sonner"
-import { Address } from "viem"
 import { shortenAddress, formatTimeAgo } from "@/lib/utils"
 import { formatEnsName } from "@/lib/userUtils"
 import { 
@@ -40,11 +41,8 @@ import {
   Trash2 
 } from "lucide-react"
 
-interface Group {
-  id: number
-  name: string
+interface LocalGroup extends Group {
   memberCount: number
-  members: Address[]
   avatar?: string
   lastMessage?: string
   timestamp?: string
@@ -68,7 +66,7 @@ export function OptimizedChatDashboard() {
   // Optimized contacts loading
   const { contacts, isLoading: contactsLoading } = useOptimizedContacts(address)
   
-  const [groups, setGroups] = useState<Group[]>([])
+  const [groups, setGroups] = useState<LocalGroup[]>([])
   const [selectedChat, setSelectedChat] = useState<string | null>(null)
   const [selectedChatType, setSelectedChatType] = useState<'user' | 'group'>('user')
   const [messages, setMessages] = useState<Message[]>([])
@@ -195,13 +193,15 @@ export function OptimizedChatDashboard() {
   // Load groups with optimization
   useEffect(() => {
     if (totalGroups) {
-      const groupList: Group[] = []
+      const groupList: LocalGroup[] = []
       for (let i = 1; i <= Number(totalGroups); i++) {
         groupList.push({
           id: i,
           name: `Group ${i}`,
           avatarHash: '',
           members: [],
+          memberCount: 0,
+          avatar: undefined,
           lastMessage: "Group conversation",
           timestamp: "1h"
         })
