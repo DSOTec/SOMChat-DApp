@@ -42,10 +42,10 @@ export function WalletConnectButton() {
                 return (
                   <Button 
                     onClick={openConnectModal} 
-                    className="glow-hover text-sm sm:text-base px-4 sm:px-6"
+                    className="glow-hover text-base sm:text-lg px-8 sm:px-12 py-3 sm:py-4 h-auto font-semibold w-full sm:w-auto"
                   >
                     <Wallet className="w-4 h-4 mr-2" />
-                    Connect Wallet
+                    Get Started
                   </Button>
                 )
               }
