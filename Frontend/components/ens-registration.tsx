@@ -1,25 +1,71 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useAccount, useDisconnect } from "wagmi"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { MessageCircle, Upload, Wallet, ArrowRight, CheckCircle } from "lucide-react"
+import { MessageCircle, Upload, Wallet, ArrowRight, CheckCircle, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { WalletConnectButton } from "@/components/wallet-connect-button"
+import { useUserRegistry } from "@/hooks/useUserRegistry"
+import { toast } from "sonner"
 
 export function ENSRegistration() {
   const [ensName, setEnsName] = useState("")
   const [profileImage, setProfileImage] = useState<string | null>(null)
-  const [isConnected, setIsConnected] = useState(true) // Simulated wallet connection
-  const [isLoading, setIsLoading] = useState(false)
+  const [avatarHash, setAvatarHash] = useState("")
+  
+  const { address, isConnected } = useAccount()
+  const { disconnect } = useDisconnect()
+  const router = useRouter()
+  
+  const { 
+    registerUser, 
+    useIsUserRegistered, 
+    isPending, 
+    isConfirming, 
+    isConfirmed, 
+    error 
+  } = useUserRegistry()
+  
+  const { data: isRegistered, refetch: refetchRegistration } = useIsUserRegistered(address)
 
-  const walletAddress = "0x1234...5678" // Simulated wallet address
+  // Redirect if not connected
+  useEffect(() => {
+    if (!isConnected) {
+      router.push('/')
+    }
+  }, [isConnected, router])
+
+  // Redirect to dashboard if already registered
+  useEffect(() => {
+    if (isRegistered && address) {
+      router.push('/dashboard')
+    }
+  }, [isRegistered, address, router])
+
+  // Handle transaction confirmation
+  useEffect(() => {
+    if (isConfirmed) {
+      toast.success("Registration successful! Welcome to SOMChat!")
+      refetchRegistration()
+      router.push('/dashboard')
+    }
+  }, [isConfirmed, refetchRegistration, router])
+
+  // Handle transaction errors
+  useEffect(() => {
+    if (error) {
+      toast.error("Registration failed: " + (error as any)?.shortMessage || error.message)
+    }
+  }, [error])
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -34,14 +80,38 @@ export function ENSRegistration() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
+    
+    if (!ensName.trim()) {
+      toast.error("Please enter an ENS name")
+      return
+    }
 
-    // Simulate registration process
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    try {
+      await registerUser(ensName.trim(), avatarHash)
+      toast.success("Registration transaction submitted!")
+    } catch (err) {
+      console.error("Registration error:", err)
+      toast.error("Failed to submit registration transaction")
+    }
+  }
 
-    setIsLoading(false)
-    // Redirect to dashboard
-    window.location.href = "/dashboard"
+  // Show wallet connection if not connected
+  if (!isConnected) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle>Connect Your Wallet</CardTitle>
+            <CardDescription>
+              Please connect your wallet to register for SOMChat
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+            <WalletConnectButton />
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -64,6 +134,14 @@ export function ENSRegistration() {
                 <span className="hidden sm:inline">Wallet Connected</span>
                 <span className="sm:hidden">Connected</span>
               </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => disconnect()}
+                className="text-xs"
+              >
+                Disconnect
+              </Button>
             </div>
           </div>
         </div>
@@ -91,7 +169,9 @@ export function ENSRegistration() {
                 <div className="flex items-center justify-between">
                   <div className="min-w-0 flex-1">
                     <Label className="text-xs sm:text-sm font-medium text-muted-foreground">Connected Wallet</Label>
-                    <p className="font-mono text-xs sm:text-sm mt-1 break-all">{walletAddress}</p>
+                    <p className="font-mono text-xs sm:text-sm mt-1 break-all">
+                      {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : ''}
+                    </p>
                   </div>
                   <div className="w-2 h-2 rounded-full bg-green-500 ml-2 shrink-0"></div>
                 </div>
@@ -155,16 +235,18 @@ export function ENSRegistration() {
                   type="submit"
                   className="w-full glow-hover text-sm sm:text-base py-2 sm:py-3"
                   size="lg"
-                  disabled={!ensName.trim() || isLoading}
+                  disabled={!ensName.trim() || isPending || isConfirming}
                 >
-                  {isLoading ? (
+                  {isPending || isConfirming ? (
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      <span className="text-sm sm:text-base">Registering...</span>
+                      <span className="text-sm sm:text-base">
+                        {isPending ? "Confirming..." : "Processing..."}
+                      </span>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <span className="text-sm sm:text-base">Save & Continue</span>
+                      <span className="text-sm sm:text-base">Register & Continue</span>
                       <ArrowRight className="w-4 h-4" />
                     </div>
                   )}

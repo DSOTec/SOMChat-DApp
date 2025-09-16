@@ -5,6 +5,7 @@ import { Roboto_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
 import { ThemeProvider } from "@/components/theme-provider"
+import { Web3Provider } from "@/components/web3-provider"
 import "./globals.css"
 
 const poppins = Poppins({
@@ -34,10 +35,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`font-sans ${poppins.variable} ${robotoMono.variable} antialiased`}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <Suspense fallback={null}>{children}</Suspense>
-          <Analytics />
-        </ThemeProvider>
+        <Web3Provider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <Suspense fallback={null}>{children}</Suspense>
+            <Analytics />
+          </ThemeProvider>
+        </Web3Provider>
       </body>
     </html>
   )

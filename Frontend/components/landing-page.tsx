@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -7,9 +8,12 @@ import { Wallet, MessageCircle, Shield, Users, Globe, Zap, Mail, Github, Twitter
 import Link from "next/link"
 import { useState } from "react"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { WalletConnectButton } from "@/components/wallet-connect-button"
+import { useAccount } from "wagmi"
 
 export function LandingPage() {
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { address, isConnected } = useAccount()
 
   return (
     <div className="min-h-screen bg-background">
@@ -72,9 +76,15 @@ export function LandingPage() {
 
             <div className="hidden md:flex items-center space-x-4">
               <ThemeToggle />
-              <Link href="/register">
-                <Button className="glow-hover text-sm sm:text-base px-4 sm:px-6">Get Started</Button>
-              </Link>
+              {isConnected ? (
+                <Link href="/dashboard">
+                  <Button className="glow-hover text-sm sm:text-base px-4 sm:px-6">
+                    Dashboard
+                  </Button>
+                </Link>
+              ) : (
+                <WalletConnectButton />
+              )}
             </div>
           </div>
         </div>
@@ -89,7 +99,7 @@ export function LandingPage() {
           <div className="text-center space-y-6 sm:space-y-8">
             <Badge variant="secondary" className="text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2">
               <Zap className="w-3 h-3 mr-1" />
-              Powered by Web3 & ENS
+              Chat with ease
             </Badge>
 
             <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-balance leading-tight">
@@ -102,14 +112,20 @@ export function LandingPage() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center pt-6 sm:pt-8 px-4 sm:px-0">
-              <Link href="/register">
-                <Button
-                  size="lg"
-                  className="glow-hover text-base sm:text-lg px-8 sm:px-12 py-3 sm:py-4 h-auto font-semibold w-full sm:w-auto"
-                >
-                  Start Messaging
-                </Button>
-              </Link>
+              {isConnected ? (
+                <Link href="/dashboard">
+                  <Button
+                    size="lg"
+                    className="glow-hover text-base sm:text-lg px-8 sm:px-12 py-3 sm:py-4 h-auto font-semibold w-full sm:w-auto"
+                  >
+                    Go to Dashboard
+                  </Button>
+                </Link>
+              ) : (
+                <div className="w-full sm:w-auto">
+                  <WalletConnectButton />
+                </div>
+              )}
               <Button
                 variant="outline"
                 size="lg"
@@ -430,7 +446,7 @@ export function LandingPage() {
           </div>
 
           <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-border/50 text-center">
-            <p className="text-sm text-muted-foreground">© 2024 SOMChat. Built with ❤️ for the decentralized future.</p>
+            <p className="text-sm text-muted-foreground">© 2024 SOMChat. Developed by DSOtec.</p>
           </div>
         </div>
       </footer>

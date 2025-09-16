@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useAccount, useDisconnect } from "wagmi"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -9,6 +11,11 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { CreateGroupModal } from "@/components/create-group-modal"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useUserRegistry } from "@/hooks/useUserRegistry"
+import { useChatApp } from "@/hooks/useChatApp"
+import { toast } from "sonner"
+import { Address } from "viem"
+import { shortenAddress, formatTimeAgo } from "@/lib/utils"
 import {
   MessageCircle,
   Search,
@@ -26,6 +33,7 @@ import {
 
 interface Contact {
   id: string
+  address: Address
   ensName: string
   avatar?: string
   lastMessage?: string
@@ -35,137 +43,207 @@ interface Contact {
 }
 
 interface Group {
-  id: string
+  id: number
   name: string
   avatar?: string
   lastMessage?: string
   timestamp?: string
   unreadCount?: number
   memberCount: number
+  members: Address[]
 }
 
 interface Message {
   id: string
+  sender: Address
+  receiver: Address
   content: string
-  timestamp: string
+  timestamp: bigint
   isSent: boolean
   senderName?: string
 }
 
 export function ChatDashboard() {
-  const [selectedChat, setSelectedChat] = useState<string | null>("alice.eth")
+  const [selectedChat, setSelectedChat] = useState<string | null>(null)
+  const [selectedChatType, setSelectedChatType] = useState<'user' | 'group'>('user')
   const [messageInput, setMessageInput] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
-  const [groups, setGroups] = useState<Group[]>([
-    {
-      id: "web3-devs",
-      name: "Web3 Developers",
-      avatar: "/web3-group.jpg",
-      lastMessage: "New DeFi protocol launched!",
-      timestamp: "30m",
-      unreadCount: 5,
-      memberCount: 12,
-    },
-    {
-      id: "nft-collectors",
-      name: "NFT Collectors",
-      avatar: "/nft-group.jpg",
-      lastMessage: "Check out this new collection",
-      timestamp: "2h",
-      memberCount: 8,
-    },
-  ])
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [groups, setGroups] = useState<Group[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
+  const [currentUserData, setCurrentUserData] = useState<{ensName: string, avatar?: string} | null>(null)
 
-  const currentUser = {
-    ensName: "john.eth",
-    avatar: "/diverse-user-avatars.png",
-  }
+  const { address, isConnected } = useAccount()
+  const { disconnect } = useDisconnect()
+  const router = useRouter()
 
-  const contacts: Contact[] = [
-    {
-      id: "alice.eth",
-      ensName: "alice.eth",
-      avatar: "/alice-avatar.png",
-      lastMessage: "Hey! How's the new DApp coming along?",
-      timestamp: "2m",
-      unreadCount: 2,
-      isOnline: true,
-    },
-    {
-      id: "bob.eth",
-      ensName: "bob.eth",
-      avatar: "/bob-avatar.jpg",
-      lastMessage: "Thanks for the help with the smart contract",
-      timestamp: "1h",
-      isOnline: false,
-    },
-    {
-      id: "charlie.eth",
-      ensName: "charlie.eth",
-      avatar: "/charlie-avatar.jpg",
-      lastMessage: "Let's discuss the tokenomics tomorrow",
-      timestamp: "3h",
-      unreadCount: 1,
-      isOnline: true,
-    },
-  ]
+  const { 
+    useAllUsers, 
+    useUserDetails, 
+    useIsUserRegistered 
+  } = useUserRegistry()
 
-  const messages: Message[] = [
-    {
-      id: "1",
-      content: "Hey John! How's the new DApp coming along?",
-      timestamp: "10:30 AM",
-      isSent: false,
-      senderName: "alice.eth",
-    },
-    {
-      id: "2",
-      content: "It's going great! Just finished the ENS integration",
-      timestamp: "10:32 AM",
-      isSent: true,
-    },
-    {
-      id: "3",
-      content: "That's awesome! Can't wait to try it out",
-      timestamp: "10:33 AM",
-      isSent: false,
-      senderName: "alice.eth",
-    },
-    {
-      id: "4",
-      content: "I'll send you the beta link once it's ready",
-      timestamp: "10:35 AM",
-      isSent: true,
-    },
-  ]
+  const { 
+    sendMessage, 
+    sendGroupMessage, 
+    createGroup,
+    useConversation,
+    useGroupConversation,
+    useTotalGroups,
+    isPending,
+    isConfirming,
+    error
+  } = useChatApp()
 
-  const handleSendMessage = () => {
-    if (messageInput.trim()) {
-      console.log("Sending message:", messageInput)
+  // Check if user is registered and redirect if not
+  const { data: isRegistered } = useIsUserRegistered(address)
+  const { data: userDetails } = useUserDetails(address)
+  const { data: allUsers } = useAllUsers()
+  const { data: totalGroups } = useTotalGroups()
+
+  // Redirect if not connected or not registered
+  useEffect(() => {
+    if (!isConnected) {
+      router.push('/')
+      return
+    }
+    
+    if (isRegistered === false) {
+      router.push('/register')
+      return
+    }
+  }, [isConnected, isRegistered, router])
+
+  // Set current user data
+  useEffect(() => {
+    if (userDetails && userDetails[0]) {
+      setCurrentUserData({
+        ensName: userDetails[0],
+        avatar: userDetails[1] || undefined
+      })
+    }
+  }, [userDetails])
+
+  // Load all users as contacts
+  useEffect(() => {
+    if (allUsers && address) {
+      const contactList: Contact[] = allUsers
+        .filter(userAddr => userAddr !== address)
+        .map(userAddr => ({
+          id: userAddr,
+          address: userAddr,
+          ensName: shortenAddress(userAddr), // Use utility function
+          lastMessage: "Start a conversation",
+          timestamp: "",
+          isOnline: Math.random() > 0.5 // Random online status for demo
+        }))
+      setContacts(contactList)
+    }
+  }, [allUsers, address])
+
+  // Load groups (placeholder for now - will be implemented in Phase 2)
+  useEffect(() => {
+    if (totalGroups) {
+      // For now, we'll create placeholder groups
+      // In Phase 2, we'll fetch actual group details
+      const groupList: Group[] = []
+      for (let i = 1; i <= Number(totalGroups); i++) {
+        groupList.push({
+          id: i,
+          name: `Group ${i}`,
+          memberCount: 0,
+          members: [],
+          lastMessage: "Group conversation",
+          timestamp: "1h"
+        })
+      }
+      setGroups(groupList)
+    }
+  }, [totalGroups])
+
+  // Get conversation data for selected chat
+  const selectedChatAddress = selectedChat && selectedChatType === 'user' ? selectedChat as Address : undefined
+  const selectedGroupId = selectedChat && selectedChatType === 'group' ? parseInt(selectedChat) : undefined
+  
+  const { data: conversationData } = useConversation(
+    address, 
+    selectedChatAddress
+  )
+  
+  const { data: groupConversationData } = useGroupConversation(selectedGroupId)
+
+  // Load messages for selected conversation
+  useEffect(() => {
+    if (conversationData && address) {
+      const messageList: Message[] = conversationData.map((msg, index) => ({
+        id: `${msg.sender}-${msg.timestamp}-${index}`,
+        sender: msg.sender,
+        receiver: msg.receiver,
+        content: msg.content,
+        timestamp: msg.timestamp,
+        isSent: msg.sender === address,
+        senderName: msg.sender === address ? currentUserData?.ensName : shortenAddress(msg.sender)
+      }))
+      setMessages(messageList)
+    } else if (groupConversationData && address) {
+      const messageList: Message[] = groupConversationData.map((msg, index) => ({
+        id: `${msg.sender}-${msg.timestamp}-${index}`,
+        sender: msg.sender,
+        receiver: msg.receiver,
+        content: msg.content,
+        timestamp: msg.timestamp,
+        isSent: msg.sender === address,
+        senderName: msg.sender === address ? currentUserData?.ensName : shortenAddress(msg.sender)
+      }))
+      setMessages(messageList)
+    } else {
+      setMessages([])
+    }
+  }, [conversationData, groupConversationData, address, currentUserData])
+
+  // Handle transaction success
+  useEffect(() => {
+    if (error) {
+      toast.error("Failed to send message: " + (error as any)?.shortMessage || error.message)
+    }
+  }, [error])
+
+  const handleSendMessage = async () => {
+    if (!messageInput.trim() || !selectedChat || !address) return
+
+    try {
+      if (selectedChatType === 'user') {
+        await sendMessage(selectedChat as Address, messageInput.trim())
+        toast.success("Message sent!")
+      } else if (selectedChatType === 'group') {
+        await sendGroupMessage(parseInt(selectedChat), messageInput.trim())
+        toast.success("Group message sent!")
+      }
       setMessageInput("")
+    } catch (err) {
+      console.error("Send message error:", err)
+      toast.error("Failed to send message")
     }
   }
 
-  const handleCreateGroup = (groupData: {
+  const handleCreateGroup = async (groupData: {
     name: string
     avatar: string | null
     selectedMembers: string[]
   }) => {
-    const newGroup: Group = {
-      id: `group-${Date.now()}`,
-      name: groupData.name,
-      avatar: groupData.avatar || undefined,
-      lastMessage: "Group created",
-      timestamp: "now",
-      memberCount: groupData.selectedMembers.length + 1, // +1 for current user
-    }
+    if (!address) return
 
-    setGroups((prev) => [newGroup, ...prev])
-    setSelectedChat(newGroup.id)
-    setIsMobileSidebarOpen(false)
-    console.log("Created group:", newGroup)
+    try {
+      const memberAddresses = groupData.selectedMembers as Address[]
+      await createGroup(groupData.name, groupData.avatar || "", memberAddresses)
+      toast.success("Group created successfully!")
+      setIsMobileSidebarOpen(false)
+    } catch (err) {
+      console.error("Create group error:", err)
+      toast.error("Failed to create group")
+    }
   }
 
   const filteredContacts = contacts.filter((contact) =>
@@ -174,9 +252,22 @@ export function ChatDashboard() {
 
   const filteredGroups = groups.filter((group) => group.name.toLowerCase().includes(searchQuery.toLowerCase()))
 
-  const handleChatSelect = (chatId: string) => {
+  const handleChatSelect = (chatId: string, type: 'user' | 'group') => {
     setSelectedChat(chatId)
+    setSelectedChatType(type)
     setIsMobileSidebarOpen(false)
+  }
+
+  // Show loading if not ready
+  if (!isConnected || isRegistered === undefined || !currentUserData) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -198,13 +289,13 @@ export function ChatDashboard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Avatar className="w-10 h-10">
-                <AvatarImage src={currentUser.avatar || "/placeholder.svg"} />
+                <AvatarImage src={currentUserData.avatar || "/placeholder.svg"} />
                 <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                  {currentUser.ensName.charAt(0).toUpperCase()}
+                  {currentUserData.ensName.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h3 className="font-semibold text-sidebar-foreground">{currentUser.ensName}</h3>
+                <h3 className="font-semibold text-sidebar-foreground">{currentUserData.ensName}</h3>
                 <div className="flex items-center gap-1">
                   <div className="w-2 h-2 rounded-full bg-green-500"></div>
                   <span className="text-xs text-muted-foreground">Online</span>
@@ -213,7 +304,12 @@ export function ChatDashboard() {
             </div>
             <div className="flex items-center gap-2">
               <ThemeToggle />
-              <Button variant="ghost" size="sm" className="text-sidebar-foreground">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-sidebar-foreground"
+                onClick={() => disconnect()}
+              >
                 <Settings className="w-4 h-4" />
               </Button>
               <Button
@@ -253,9 +349,9 @@ export function ChatDashboard() {
                 {filteredContacts.map((contact) => (
                   <div
                     key={contact.id}
-                    onClick={() => handleChatSelect(contact.id)}
+                    onClick={() => handleChatSelect(contact.id, 'user')}
                     className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                      selectedChat === contact.id
+                      selectedChat === contact.id && selectedChatType === 'user'
                         ? "bg-sidebar-accent text-sidebar-accent-foreground"
                         : "hover:bg-sidebar-accent/50 text-sidebar-foreground"
                     }`}
@@ -309,9 +405,9 @@ export function ChatDashboard() {
                 {filteredGroups.map((group) => (
                   <div
                     key={group.id}
-                    onClick={() => handleChatSelect(group.id)}
+                    onClick={() => handleChatSelect(group.id.toString(), 'group')}
                     className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                      selectedChat === group.id
+                      selectedChat === group.id.toString() && selectedChatType === 'group'
                         ? "bg-sidebar-accent text-sidebar-accent-foreground"
                         : "hover:bg-sidebar-accent/50 text-sidebar-foreground"
                     }`}
@@ -352,12 +448,24 @@ export function ChatDashboard() {
                     <Menu className="w-4 h-4" />
                   </Button>
                   <Avatar className="w-10 h-10">
-                    <AvatarImage src="/alice-avatar.png" />
-                    <AvatarFallback className="bg-primary/10 text-primary font-semibold">A</AvatarFallback>
+                    <AvatarImage src="/placeholder.svg" />
+                    <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                      {selectedChatType === 'user' 
+                        ? contacts.find(c => c.id === selectedChat)?.ensName.charAt(0).toUpperCase() || '?'
+                        : '#'
+                      }
+                    </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="font-semibold">alice.eth</h3>
-                    <p className="text-sm text-muted-foreground">Online</p>
+                    <h3 className="font-semibold">
+                      {selectedChatType === 'user' 
+                        ? contacts.find(c => c.id === selectedChat)?.ensName || 'Unknown'
+                        : groups.find(g => g.id.toString() === selectedChat)?.name || 'Unknown Group'
+                      }
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedChatType === 'user' ? 'Online' : `${groups.find(g => g.id.toString() === selectedChat)?.memberCount || 0} members`}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -376,24 +484,31 @@ export function ChatDashboard() {
 
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
-                {messages.map((message) => (
-                  <div key={message.id} className={`flex ${message.isSent ? "justify-end" : "justify-start"}`}>
-                    <div
-                      className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2 ${
-                        message.isSent ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      <p className="text-sm break-words">{message.content}</p>
-                      <p
-                        className={`text-xs mt-1 ${
-                          message.isSent ? "text-primary-foreground/70" : "text-muted-foreground/70"
+                {messages.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No messages yet. Start the conversation!</p>
+                  </div>
+                ) : (
+                  messages.map((message) => (
+                    <div key={message.id} className={`flex ${message.isSent ? "justify-end" : "justify-start"}`}>
+                      <div
+                        className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2 ${
+                          message.isSent ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                         }`}
                       >
-                        {message.timestamp}
-                      </p>
+                        <p className="text-sm break-words">{message.content}</p>
+                        <p
+                          className={`text-xs mt-1 ${
+                            message.isSent ? "text-primary-foreground/70" : "text-muted-foreground/70"
+                          }`}
+                        >
+                          {new Date(Number(message.timestamp) * 1000).toLocaleTimeString()}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </ScrollArea>
 
@@ -406,8 +521,16 @@ export function ChatDashboard() {
                   onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
                   className="flex-1"
                 />
-                <Button onClick={handleSendMessage} disabled={!messageInput.trim()} className="glow-hover shrink-0">
-                  <Send className="w-4 h-4" />
+                <Button 
+                  onClick={handleSendMessage} 
+                  disabled={!messageInput.trim() || isPending || isConfirming} 
+                  className="glow-hover shrink-0"
+                >
+                  {isPending || isConfirming ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
                 </Button>
               </div>
             </div>

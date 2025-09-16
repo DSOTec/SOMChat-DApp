@@ -1,0 +1,10 @@
+# Example configuration for Wagmi + RainbowKit
+# Copy this to .env.local and add your values
+
+# WalletConnect Project ID (optional but recommended)
+# Get from: https://cloud.walletconnect.com/
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id_here
+
+# Contract addresses (already configured in lib/contracts.ts)
+# NEXT_PUBLIC_CHATAPP_ADDRESS=0x61e7Ec55c10A779D8c39F61e8184Ac654781BA1A
+# NEXT_PUBLIC_USERREGISTRY_ADDRESS=0xf078dbeB5c2FF1dB3063564077D71A3983e10AEb
