@@ -1,5 +1,5 @@
-import { OptimizedChatDashboard } from "@/components/optimized-chat-dashboard"
+import { SupabaseChatDashboard } from "@/components/supabase-chat-dashboard"
 
 export default function DashboardPage() {
-  return <OptimizedChatDashboard />
+  return <SupabaseChatDashboard />
 }
