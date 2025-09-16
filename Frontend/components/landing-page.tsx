@@ -6,14 +6,34 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Wallet, MessageCircle, Shield, Users, Globe, Zap, Mail, Github, Twitter } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { WalletConnectButton } from "@/components/wallet-connect-button"
 import { useAccount } from "wagmi"
+import { useUserRegistry } from "@/hooks/useUserRegistry"
 
 export function LandingPage() {
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { address, isConnected } = useAccount()
+  const router = useRouter()
+  const { useIsUserRegistered } = useUserRegistry()
+  
+  // Check if user is registered
+  const { data: isRegistered, isLoading: isCheckingRegistration } = useIsUserRegistered(address)
+
+  // Handle routing after wallet connection
+  useEffect(() => {
+    if (isConnected && address && !isCheckingRegistration) {
+      if (isRegistered === false) {
+        // User is connected but not registered, redirect to registration
+        router.push('/register')
+      } else if (isRegistered === true) {
+        // User is connected and registered, redirect to dashboard
+        router.push('/dashboard')
+      }
+    }
+  }, [isConnected, address, isRegistered, isCheckingRegistration, router])
 
   return (
     <div className="min-h-screen bg-background">
@@ -113,14 +133,32 @@ export function LandingPage() {
 
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center pt-6 sm:pt-8 px-4 sm:px-0">
               {isConnected ? (
-                <Link href="/dashboard">
-                  <Button
-                    size="lg"
-                    className="glow-hover text-base sm:text-lg px-8 sm:px-12 py-3 sm:py-4 h-auto font-semibold w-full sm:w-auto"
-                  >
-                    Go to Dashboard
-                  </Button>
-                </Link>
+                <div className="w-full sm:w-auto">
+                  {isCheckingRegistration ? (
+                    <Button
+                      size="lg"
+                      disabled
+                      className="text-base sm:text-lg px-8 sm:px-12 py-3 sm:py-4 h-auto font-semibold w-full sm:w-auto"
+                    >
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                      Checking Registration...
+                    </Button>
+                  ) : (
+                    <Button
+                      size="lg"
+                      onClick={() => {
+                        if (isRegistered === false) {
+                          router.push('/register')
+                        } else if (isRegistered === true) {
+                          router.push('/dashboard')
+                        }
+                      }}
+                      className="glow-hover text-base sm:text-lg px-8 sm:px-12 py-3 sm:py-4 h-auto font-semibold w-full sm:w-auto"
+                    >
+                      {isRegistered === false ? 'Complete Registration' : 'Go to Dashboard'}
+                    </Button>
+                  )}
+                </div>
               ) : (
                 <div className="w-full sm:w-auto">
                   <WalletConnectButton />

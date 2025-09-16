@@ -11,11 +11,15 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { CreateGroupModal } from "@/components/create-group-modal"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { TypingIndicator } from "@/components/typing-indicator"
+import { useTypingIndicator } from "@/hooks/useTypingIndicator"
 import { useUserRegistry } from "@/hooks/useUserRegistry"
 import { useChatApp } from "@/hooks/useChatApp"
+import { useRealtimeMessaging } from "@/hooks/useRealtimeMessaging"
 import { toast } from "sonner"
 import { Address } from "viem"
 import { shortenAddress, formatTimeAgo } from "@/lib/utils"
+import { fetchUserDetails, formatEnsName, getIpfsUrl } from "@/lib/userUtils"
 import {
   MessageCircle,
   Search,
@@ -86,16 +90,22 @@ export function ChatDashboard() {
   } = useUserRegistry()
 
   const { 
-    sendMessage, 
-    sendGroupMessage, 
     createGroup,
-    useConversation,
-    useGroupConversation,
     useTotalGroups,
-    isPending,
-    isConfirming,
-    error
+    isPending: isContractPending,
+    isConfirming: isContractConfirming,
+    error: contractError
   } = useChatApp()
+
+  // Real-time messaging hooks
+  const { 
+    sendRealtimeMessage, 
+    sendRealtimeGroupMessage, 
+    useDirectMessages, 
+    useGroupMessages,
+    isLoading: isMessageLoading,
+    error: messagingError
+  } = useRealtimeMessaging()
 
   // Check if user is registered and redirect if not
   const { data: isRegistered } = useIsUserRegistered(address)
@@ -119,28 +129,56 @@ export function ChatDashboard() {
   // Set current user data
   useEffect(() => {
     if (userDetails && userDetails[0]) {
+      const avatarHash = userDetails[1] || ''
       setCurrentUserData({
-        ensName: userDetails[0],
-        avatar: userDetails[1] || undefined
+        ensName: formatEnsName(userDetails[0]),
+        avatar: avatarHash ? getIpfsUrl(avatarHash) : undefined
       })
     }
   }, [userDetails])
 
-  // Load all users as contacts
+  // Load all users as contacts with their ENS details
   useEffect(() => {
-    if (allUsers && address) {
-      const contactList: Contact[] = allUsers
-        .filter(userAddr => userAddr !== address)
-        .map(userAddr => ({
-          id: userAddr,
-          address: userAddr,
-          ensName: shortenAddress(userAddr), // Use utility function
-          lastMessage: "Start a conversation",
-          timestamp: "",
-          isOnline: Math.random() > 0.5 // Random online status for demo
-        }))
-      setContacts(contactList)
+    const loadContactsWithDetails = async () => {
+      if (allUsers && address) {
+        const contactPromises = allUsers
+          .filter(userAddr => userAddr !== address)
+          .map(async (userAddr) => {
+            try {
+              // Fetch user details for each contact
+              const userDetailsResult = await fetchUserDetails(userAddr)
+              const ensName = userDetailsResult?.[0] || shortenAddress(userAddr)
+              const avatarHash = userDetailsResult?.[1] || ''
+              const avatar = avatarHash ? getIpfsUrl(avatarHash) : undefined
+              
+              return {
+                id: userAddr,
+                address: userAddr,
+                ensName: formatEnsName(ensName),
+                avatar,
+                lastMessage: "Start a conversation",
+                timestamp: "",
+                isOnline: Math.random() > 0.5 // Random online status for demo
+              }
+            } catch (error) {
+              // Fallback to address if user details fetch fails
+              return {
+                id: userAddr,
+                address: userAddr,
+                ensName: formatEnsName(shortenAddress(userAddr)),
+                lastMessage: "Start a conversation",
+                timestamp: "",
+                isOnline: Math.random() > 0.5
+              }
+            }
+          })
+        
+        const contactList = await Promise.all(contactPromises)
+        setContacts(contactList)
+      }
     }
+    
+    loadContactsWithDetails()
   }, [allUsers, address])
 
   // Load groups (placeholder for now - will be implemented in Phase 2)
@@ -163,63 +201,71 @@ export function ChatDashboard() {
     }
   }, [totalGroups])
 
-  // Get conversation data for selected chat
+  // Get real-time messages for selected chat
   const selectedChatAddress = selectedChat && selectedChatType === 'user' ? selectedChat as Address : undefined
   const selectedGroupId = selectedChat && selectedChatType === 'group' ? parseInt(selectedChat) : undefined
   
-  const { data: conversationData } = useConversation(
-    address, 
-    selectedChatAddress
-  )
-  
-  const { data: groupConversationData } = useGroupConversation(selectedGroupId)
+  // Use real-time messaging hooks
+  const directMessages = useDirectMessages(address!, selectedChatAddress!)
+  const groupMessages = useGroupMessages(selectedGroupId!)
+
+  // Generate conversation ID for typing indicator
+  const currentConversationId = selectedChatType === 'user' && selectedChatAddress && address
+    ? `direct_${[address.toLowerCase(), selectedChatAddress.toLowerCase()].sort().join('_')}`
+    : selectedChatType === 'group' && selectedGroupId
+    ? `group_${selectedGroupId}`
+    : ''
+
+  // Use typing indicator
+  const { typingUsers, setTypingStatus } = useTypingIndicator(currentConversationId)
 
   // Load messages for selected conversation
   useEffect(() => {
-    if (conversationData && address) {
-      const messageList: Message[] = conversationData.map((msg, index) => ({
-        id: `${msg.sender}-${msg.timestamp}-${index}`,
+    if (selectedChatType === 'user' && directMessages) {
+      const messageList: Message[] = directMessages.map((msg) => ({
+        id: msg.id,
         sender: msg.sender,
-        receiver: msg.receiver,
+        receiver: msg.receiver!,
         content: msg.content,
-        timestamp: msg.timestamp,
-        isSent: msg.sender === address,
-        senderName: msg.sender === address ? currentUserData?.ensName : shortenAddress(msg.sender)
+        timestamp: BigInt(Math.floor(msg.timestamp.getTime() / 1000)),
+        isSent: msg.isSent,
+        senderName: msg.senderName
       }))
       setMessages(messageList)
-    } else if (groupConversationData && address) {
-      const messageList: Message[] = groupConversationData.map((msg, index) => ({
-        id: `${msg.sender}-${msg.timestamp}-${index}`,
+    } else if (selectedChatType === 'group' && groupMessages) {
+      const messageList: Message[] = groupMessages.map((msg) => ({
+        id: msg.id,
         sender: msg.sender,
-        receiver: msg.receiver,
+        receiver: '0x0000000000000000000000000000000000000000' as Address, // No specific receiver for group messages
         content: msg.content,
-        timestamp: msg.timestamp,
-        isSent: msg.sender === address,
-        senderName: msg.sender === address ? currentUserData?.ensName : shortenAddress(msg.sender)
+        timestamp: BigInt(Math.floor(msg.timestamp.getTime() / 1000)),
+        isSent: msg.isSent,
+        senderName: msg.senderName
       }))
       setMessages(messageList)
     } else {
       setMessages([])
     }
-  }, [conversationData, groupConversationData, address, currentUserData])
+  }, [directMessages, groupMessages, selectedChatType, address, currentUserData])
 
-  // Handle transaction success
+  // Handle messaging errors
   useEffect(() => {
-    if (error) {
-      toast.error("Failed to send message: " + (error as any)?.shortMessage || error.message)
+    if (contractError) {
+      toast.error("Contract error: " + (contractError as any)?.shortMessage || contractError.message)
     }
-  }, [error])
+    if (messagingError) {
+      toast.error("Messaging error: " + messagingError)
+    }
+  }, [contractError, messagingError])
 
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !selectedChat || !address) return
 
     try {
       if (selectedChatType === 'user') {
-        await sendMessage(selectedChat as Address, messageInput.trim())
-        toast.success("Message sent!")
+        await sendRealtimeMessage(selectedChat as Address, messageInput.trim())
       } else if (selectedChatType === 'group') {
-        await sendGroupMessage(parseInt(selectedChat), messageInput.trim())
-        toast.success("Group message sent!")
+        await sendRealtimeGroupMessage(parseInt(selectedChat), messageInput.trim())
       }
       setMessageInput("")
     } catch (err) {
@@ -448,7 +494,11 @@ export function ChatDashboard() {
                     <Menu className="w-4 h-4" />
                   </Button>
                   <Avatar className="w-10 h-10">
-                    <AvatarImage src="/placeholder.svg" />
+                    <AvatarImage src={
+                      selectedChatType === 'user' 
+                        ? contacts.find(c => c.id === selectedChat)?.avatar || "/placeholder.svg"
+                        : groups.find(g => g.id.toString() === selectedChat)?.avatar || "/placeholder.svg"
+                    } />
                     <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                       {selectedChatType === 'user' 
                         ? contacts.find(c => c.id === selectedChat)?.ensName.charAt(0).toUpperCase() || '?'
@@ -490,25 +540,49 @@ export function ChatDashboard() {
                     <p>No messages yet. Start the conversation!</p>
                   </div>
                 ) : (
-                  messages.map((message) => (
-                    <div key={message.id} className={`flex ${message.isSent ? "justify-end" : "justify-start"}`}>
-                      <div
-                        className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2 ${
-                          message.isSent ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        <p className="text-sm break-words">{message.content}</p>
-                        <p
-                          className={`text-xs mt-1 ${
-                            message.isSent ? "text-primary-foreground/70" : "text-muted-foreground/70"
-                          }`}
-                        >
-                          {new Date(Number(message.timestamp) * 1000).toLocaleTimeString()}
-                        </p>
+                  messages.map((message) => {
+                    const senderContact = contacts.find(c => c.address === message.sender)
+                    const senderName = senderContact?.ensName || formatEnsName(shortenAddress(message.sender))
+                    const senderAvatar = senderContact?.avatar
+                    
+                    return (
+                      <div key={message.id} className={`flex ${message.isSent ? "justify-end" : "justify-start"}`}>
+                        {!message.isSent && (
+                          <Avatar className="w-8 h-8 mr-2 mt-1 shrink-0">
+                            <AvatarImage src={senderAvatar || "/placeholder.svg"} />
+                            <AvatarFallback className="bg-secondary/10 text-secondary font-semibold text-xs">
+                              {senderName.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
+                        <div className="flex flex-col max-w-[85%] sm:max-w-[70%]">
+                          {!message.isSent && (
+                            <span className="text-xs text-muted-foreground mb-1 ml-1">
+                              {senderName}
+                            </span>
+                          )}
+                          <div
+                            className={`rounded-2xl px-4 py-2 ${
+                              message.isSent ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            <p className="text-sm break-words">{message.content}</p>
+                            <p
+                              className={`text-xs mt-1 ${
+                                message.isSent ? "text-primary-foreground/70" : "text-muted-foreground/70"
+                              }`}
+                            >
+                              {new Date(Number(message.timestamp) * 1000).toLocaleTimeString()}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    )
+                  })
                 )}
+                
+                {/* Typing Indicator */}
+                <TypingIndicator typingUsers={typingUsers} contacts={contacts} />
               </div>
             </ScrollArea>
 
@@ -517,16 +591,25 @@ export function ChatDashboard() {
                 <Input
                   placeholder="Type a message..."
                   value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
+                  onChange={(e) => {
+                    setMessageInput(e.target.value)
+                    // Set typing status when user starts typing
+                    if (e.target.value.trim() && !messageInput.trim()) {
+                      setTypingStatus(true)
+                    } else if (!e.target.value.trim() && messageInput.trim()) {
+                      setTypingStatus(false)
+                    }
+                  }}
                   onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                  onBlur={() => setTypingStatus(false)}
                   className="flex-1"
                 />
                 <Button 
                   onClick={handleSendMessage} 
-                  disabled={!messageInput.trim() || isPending || isConfirming} 
+                  disabled={!messageInput.trim() || isMessageLoading || isContractPending || isContractConfirming} 
                   className="glow-hover shrink-0"
                 >
-                  {isPending || isConfirming ? (
+                  {isMessageLoading || isContractPending || isContractConfirming ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                   ) : (
                     <Send className="w-4 h-4" />
