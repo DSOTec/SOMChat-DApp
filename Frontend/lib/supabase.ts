@@ -1,29 +1,49 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: false, // We handle auth via wallet connection
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
+// Create a function to get the Supabase client safely
+const createSupabaseClient = () => {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn('Supabase URL or Anon Key not provided. Some features may not work.')
+    // Return a mock client for build time
+    return null as any
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false, // We handle auth via wallet connection
     },
-  },
-})
+    realtime: {
+      params: {
+        eventsPerSecond: 10,
+      },
+    },
+  })
+}
+
+export const supabase = createSupabaseClient()
 
 // Set the current user context for RLS policies
 export const setSupabaseUserContext = async (walletAddress: string) => {
-  const { error } = await supabase.rpc('set_config', {
-    setting_name: 'app.current_user_wallet',
-    setting_value: walletAddress,
-    is_local: true
-  })
-  
-  if (error) {
-    console.error('Error setting user context:', error)
+  if (!supabase) {
+    console.warn('Supabase client not available')
+    return
+  }
+
+  try {
+    const { error } = await supabase.rpc('set_config', {
+      setting_name: 'app.current_user_wallet',
+      setting_value: walletAddress,
+      is_local: true
+    })
+    
+    if (error) {
+      console.error('Error setting user context:', error)
+    }
+  } catch (err) {
+    console.error('Error setting user context:', err)
   }
 }
 

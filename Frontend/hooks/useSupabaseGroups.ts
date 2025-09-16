@@ -22,7 +22,7 @@ export function useSupabaseGroups() {
 
   // Create a new group
   const createGroup = useCallback(async (name: string, description?: string, avatarHash?: string) => {
-    if (!address) return null
+    if (!address || !supabase) return null
 
     try {
       setIsLoading(true)
@@ -64,7 +64,7 @@ export function useSupabaseGroups() {
 
   // Get user's groups
   const getUserGroups = useCallback(async () => {
-    if (!address) return []
+    if (!address || !supabase) return []
 
     try {
       setIsLoading(true)
@@ -91,6 +91,8 @@ export function useSupabaseGroups() {
 
   // Add member to group
   const addGroupMember = useCallback(async (groupId: string, walletAddress: Address, role: 'admin' | 'member' = 'member') => {
+    if (!supabase) return null
+    
     try {
       const { data, error } = await supabase
         .from('group_members')
@@ -113,6 +115,8 @@ export function useSupabaseGroups() {
 
   // Get group members
   const getGroupMembers = useCallback(async (groupId: string) => {
+    if (!supabase) return []
+    
     try {
       const { data, error } = await supabase
         .from('group_members')
@@ -135,7 +139,7 @@ export function useSupabaseGroups() {
 
   // Send group message
   const sendGroupMessage = useCallback(async (groupId: string, content: string) => {
-    if (!address) return null
+    if (!address || !supabase) return null
 
     try {
       const { data, error } = await supabase
@@ -160,6 +164,8 @@ export function useSupabaseGroups() {
 
   // Get group messages
   const getGroupMessages = useCallback(async (groupId: string) => {
+    if (!supabase) return []
+    
     try {
       setIsLoading(true)
       const { data, error } = await supabase
@@ -182,6 +188,8 @@ export function useSupabaseGroups() {
 
   // Subscribe to group messages
   const subscribeToGroupMessages = useCallback((groupId: string, callback: (message: GroupMessage) => void) => {
+    if (!supabase) return null
+    
     const channel = supabase
       .channel(`group_messages_${groupId}`)
       .on(
@@ -192,7 +200,7 @@ export function useSupabaseGroups() {
           table: 'group_messages',
           filter: `group_id=eq.${groupId}`
         },
-        (payload) => {
+        (payload: any) => {
           callback(payload.new as GroupMessage)
         }
       )
@@ -203,7 +211,7 @@ export function useSupabaseGroups() {
 
   // Subscribe to group updates
   const subscribeToGroups = useCallback((callback: (group: Group) => void) => {
-    if (!address) return null
+    if (!address || !supabase) return null
 
     const channel = supabase
       .channel('groups')
@@ -214,7 +222,7 @@ export function useSupabaseGroups() {
           schema: 'public',
           table: 'groups'
         },
-        (payload) => {
+        (payload: any) => {
           callback(payload.new as Group)
         }
       )

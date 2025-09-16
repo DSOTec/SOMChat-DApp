@@ -21,7 +21,7 @@ export function useSupabaseMessaging() {
 
   // Register or update user in database
   const registerUser = useCallback(async (ensName?: string, avatarHash?: string) => {
-    if (!address) return null
+    if (!address || !supabase) return null
 
     try {
       const { data, error } = await supabase
@@ -48,6 +48,8 @@ export function useSupabaseMessaging() {
 
   // Get all registered users
   const getUsers = useCallback(async () => {
+    if (!supabase) return []
+    
     try {
       setIsLoading(true)
       const { data, error } = await supabase
@@ -69,7 +71,7 @@ export function useSupabaseMessaging() {
 
   // Send a message
   const sendMessage = useCallback(async (receiverWallet: Address, content: string) => {
-    if (!address) return null
+    if (!address || !supabase) return null
 
     try {
       const { data, error } = await supabase
@@ -94,7 +96,7 @@ export function useSupabaseMessaging() {
 
   // Get messages for a conversation
   const getMessages = useCallback(async (otherWallet: Address) => {
-    if (!address) return []
+    if (!address || !supabase) return []
 
     try {
       setIsLoading(true)
@@ -118,7 +120,7 @@ export function useSupabaseMessaging() {
 
   // Mark messages as read
   const markMessagesAsRead = useCallback(async (senderWallet: Address) => {
-    if (!address) return
+    if (!address || !supabase) return
 
     try {
       const { error } = await supabase
@@ -136,7 +138,7 @@ export function useSupabaseMessaging() {
 
   // Subscribe to realtime messages
   const subscribeToMessages = useCallback((callback: (message: Message) => void) => {
-    if (!address) return null
+    if (!address || !supabase) return null
 
     const channel = supabase
       .channel('messages')
@@ -148,7 +150,7 @@ export function useSupabaseMessaging() {
           table: 'messages',
           filter: `or(sender_wallet.eq.${address.toLowerCase()},receiver_wallet.eq.${address.toLowerCase()})`
         },
-        (payload) => {
+        (payload: any) => {
           callback(payload.new as Message)
         }
       )
@@ -159,6 +161,8 @@ export function useSupabaseMessaging() {
 
   // Subscribe to user updates
   const subscribeToUsers = useCallback((callback: (user: User) => void) => {
+    if (!supabase) return null
+    
     const channel = supabase
       .channel('users')
       .on(
@@ -168,7 +172,7 @@ export function useSupabaseMessaging() {
           schema: 'public',
           table: 'users'
         },
-        (payload) => {
+        (payload: any) => {
           callback(payload.new as User)
         }
       )
