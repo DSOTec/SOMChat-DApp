@@ -370,7 +370,7 @@ export function SupabaseChatDashboard() {
                 </div>
               </div>
               <div className="space-y-1">
-                {filteredContacts.map((contact) => (
+                {(filteredContacts || []).map((contact) => (
                   <div
                     key={contact.id}
                     onClick={() => handleChatSelect(contact.id, 'user')}
@@ -424,7 +424,7 @@ export function SupabaseChatDashboard() {
                 <CreateGroupModal />
               </div>
               <div className="space-y-1">
-                {groups.map((group) => (
+                {(groups || []).map((group) => (
                   <div
                     key={group.id}
                     onClick={() => handleChatSelect(group.id, 'group')}
@@ -522,14 +522,14 @@ export function SupabaseChatDashboard() {
             {/* Messages */}
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
-                {chatMessages.length === 0 ? (
+                {(chatMessages || []).length === 0 ? (
                   <div className="text-center text-muted-foreground py-8">
                     <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>No messages yet. Start the conversation!</p>
                   </div>
                 ) : (
-                  chatMessages.map((message) => {
-                    const senderContact = contacts.find(c => c.address === message.sender)
+                  (chatMessages || []).map((message) => {
+                    const senderContact = (contacts || []).find(c => c.address === message.sender)
                     const senderName = senderContact?.ensName || formatEnsName(shortenAddress(message.sender as Address))
                     const senderAvatar = senderContact?.avatar
                     
