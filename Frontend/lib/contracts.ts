@@ -1,9 +1,9 @@
 import { Address } from 'viem'
 
-// Contract addresses on Sepolia
+// Contract addresses on Lisk-Sepolia
 export const CONTRACTS = {
-  CHAT_APP: '0x61e7Ec55c10A779D8c39F61e8184Ac654781BA1A' as Address,
-  USER_REGISTRY: '0xf078dbeB5c2FF1dB3063564077D71A3983e10AEb' as Address,
+  CHAT_APP: '0xEA7A534AC5527ee2FB75Efc91ca9AAE2a7966a22' as Address,
+  USER_REGISTRY: '0xE0AbcbC1f2943B197cbB6f7E27709DEa09fed526' as Address,
 } as const
 
 // ChatApp ABI
@@ -204,6 +204,27 @@ export const USER_REGISTRY_ABI = [
       { name: 'userAddress', type: 'address', indexed: true },
       { name: 'ensName', type: 'string', indexed: false },
       { name: 'avatarHash', type: 'string', indexed: false }
+    ]
+  },
+  {
+    name: 'deleteUser',
+    type: 'function',
+    inputs: [],
+    outputs: [],
+    stateMutability: 'nonpayable'
+  },
+  {
+    name: 'deleteOtherUser',
+    type: 'function',
+    inputs: [{ name: 'userAddress', type: 'address' }],
+    outputs: [],
+    stateMutability: 'nonpayable'
+  },
+  {
+    name: 'UserDeleted',
+    type: 'event',
+    inputs: [
+      { name: 'userAddress', type: 'address', indexed: true }
     ]
   }
 ] as const

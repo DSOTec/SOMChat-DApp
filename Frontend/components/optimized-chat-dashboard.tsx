@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { CreateGroupModal } from "@/components/create-group-modal"
+import { DeleteUserDialog } from "@/components/delete-user-dialog"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { TypingIndicator } from "@/components/typing-indicator"
 import { useTypingIndicator } from "@/hooks/useTypingIndicator"
@@ -21,21 +22,22 @@ import { toast } from "sonner"
 import { Address } from "viem"
 import { shortenAddress, formatTimeAgo } from "@/lib/utils"
 import { formatEnsName } from "@/lib/userUtils"
-import {
-  MessageCircle,
-  Search,
-  Plus,
-  Send,
-  MoreVertical,
-  Phone,
-  Video,
-  Settings,
-  Users,
-  Hash,
-  Menu,
-  X,
-  Loader2,
-  LogOut,
+import { 
+  MessageCircle, 
+  Search, 
+  Plus, 
+  Send, 
+  MoreVertical, 
+  Phone, 
+  Video, 
+  Settings, 
+  Users, 
+  Hash, 
+  Menu, 
+  X, 
+  Loader2, 
+  LogOut, 
+  Trash2 
 } from "lucide-react"
 
 interface Group {
@@ -74,6 +76,8 @@ export function OptimizedChatDashboard() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false)
+  const [isDeleteUserOpen, setIsDeleteUserOpen] = useState(false)
+  const [userToDelete, setUserToDelete] = useState<{address: Address, name: string} | null>(null)
   const [currentUserData, setCurrentUserData] = useState<{ensName: string, avatar?: string} | null>(null)
 
   // Memoized filtered contacts for better performance
@@ -94,8 +98,8 @@ export function OptimizedChatDashboard() {
   }, [groups, searchQuery])
 
   // User registry hooks
-  const { useIsUserRegistered, useUserDetails } = useUserRegistry()
-  const { useTotalGroups } = useChatApp()
+  const { useIsUserRegistered, useUserDetails, deleteUser, deleteOtherUser, isPending: isDeletingUser } = useUserRegistry()
+  const { useTotalGroups, createGroup, isPending: isCreatingGroup, isConfirmed } = useChatApp()
   
   // Real-time messaging
   const { 
@@ -131,6 +135,52 @@ export function OptimizedChatDashboard() {
     }
   }, [isConnected, isRegistered, router])
 
+  // Handle group creation
+  const handleCreateGroup = async (groupData: {
+    name: string
+    avatar: string | null
+    selectedMembers: string[]
+  }) => {
+    try {
+      const memberAddresses = groupData.selectedMembers as Address[]
+      // Add current user to the group
+      if (address && !memberAddresses.includes(address)) {
+        memberAddresses.push(address)
+      }
+      
+      // For now, we'll use empty string for avatar hash until IPFS upload is implemented
+      const avatarHash = ''
+      
+      await createGroup(groupData.name, memberAddresses, avatarHash)
+    } catch (error) {
+      console.error('Failed to create group:', error)
+    }
+  }
+
+  // Handle user deletion
+  const handleDeleteUser = async (userAddress: Address) => {
+    try {
+      if (userAddress === address) {
+        await deleteUser()
+        toast.success("Your account has been deleted")
+        // Redirect to home after self-deletion
+        router.push('/')
+      } else {
+        await deleteOtherUser(userAddress)
+        toast.success("User has been deleted")
+      }
+    } catch (error) {
+      console.error('Failed to delete user:', error)
+      toast.error("Failed to delete user")
+    }
+  }
+
+  // Open delete user dialog
+  const openDeleteUserDialog = (userAddress: Address, userName: string) => {
+    setUserToDelete({ address: userAddress, name: userName })
+    setIsDeleteUserOpen(true)
+  }
+
   // Set current user data
   useEffect(() => {
     if (userDetails && userDetails[0]) {
@@ -150,7 +200,7 @@ export function OptimizedChatDashboard() {
         groupList.push({
           id: i,
           name: `Group ${i}`,
-          memberCount: 0,
+          avatarHash: '',
           members: [],
           lastMessage: "Group conversation",
           timestamp: "1h"
@@ -158,7 +208,7 @@ export function OptimizedChatDashboard() {
       }
       setGroups(groupList)
     }
-  }, [totalGroups])
+  }, [totalGroups, isConfirmed])
 
   // Get real-time messages for selected chat
   const selectedChatAddress = selectedChat && selectedChatType === 'user' ? selectedChat as Address : undefined
@@ -357,7 +407,21 @@ export function OptimizedChatDashboard() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <h5 className="font-medium truncate">{contact.ensName}</h5>
-                        <span className="text-xs text-muted-foreground">{contact.timestamp}</span>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openDeleteUserDialog(contact.address, contact.ensName)
+                            }}
+                            title="Delete user"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                          <span className="text-xs text-muted-foreground">{contact.timestamp}</span>
+                        </div>
                       </div>
                       <p className="text-xs text-muted-foreground truncate font-mono">
                         {shortenAddress(contact.address)}
@@ -586,8 +650,24 @@ export function OptimizedChatDashboard() {
         isOpen={isCreateGroupOpen} 
         onClose={() => setIsCreateGroupOpen(false)}
         contacts={contacts}
-        onCreateGroup={() => {}}
+        onCreateGroup={handleCreateGroup}
       />
+
+      {/* Delete User Dialog */}
+      {userToDelete && (
+        <DeleteUserDialog
+          isOpen={isDeleteUserOpen}
+          onClose={() => {
+            setIsDeleteUserOpen(false)
+            setUserToDelete(null)
+          }}
+          userAddress={userToDelete.address}
+          userName={userToDelete.name}
+          onDeleteUser={handleDeleteUser}
+          isDeleting={isDeletingUser}
+          isSelfDelete={userToDelete.address === address}
+        />
+      )}
     </div>
   )
 }

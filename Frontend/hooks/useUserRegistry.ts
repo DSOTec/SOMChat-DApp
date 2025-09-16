@@ -65,8 +65,30 @@ export function useUserRegistry() {
     hash,
   })
 
+  // Delete current user
+  const deleteUser = async () => {
+    return writeContract({
+      address: CONTRACTS.USER_REGISTRY,
+      abi: USER_REGISTRY_ABI,
+      functionName: 'deleteUser',
+      args: [],
+    })
+  }
+
+  // Delete another user
+  const deleteOtherUser = async (userAddress: Address) => {
+    return writeContract({
+      address: CONTRACTS.USER_REGISTRY,
+      abi: USER_REGISTRY_ABI,
+      functionName: 'deleteOtherUser',
+      args: [userAddress],
+    })
+  }
+
   return {
     registerUser,
+    deleteUser,
+    deleteOtherUser,
     useIsUserRegistered,
     useUserDetails,
     useAllUsers,

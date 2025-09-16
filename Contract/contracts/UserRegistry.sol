@@ -21,6 +21,7 @@ contract UserRegistry {
 
     // Events
     event UserRegistered(address indexed userAddress, string ensName, string avatarHash);
+    event UserDeleted(address indexed userAddress);
 
     /**
      * @dev Register a new user with ENS name and avatar hash
@@ -80,5 +81,56 @@ contract UserRegistry {
     function getUserDetails(address userAddress) external view returns (string memory ensName, string memory avatarHash, bool registered) {
         User memory user = users[userAddress];
         return (user.ensName, user.avatarHash, user.registered);
+    }
+
+    /**
+     * @dev Delete a user (only the user themselves can delete their account)
+     */
+    function deleteUser() external {
+        require(users[msg.sender].registered, "User is not registered");
+        
+        // Mark user as not registered
+        users[msg.sender].registered = false;
+        users[msg.sender].ensName = "";
+        users[msg.sender].avatarHash = "";
+        
+        // Remove from allUsers array
+        for (uint256 i = 0; i < allUsers.length; i++) {
+            if (allUsers[i] == msg.sender) {
+                // Move the last element to the current position and pop
+                allUsers[i] = allUsers[allUsers.length - 1];
+                allUsers.pop();
+                break;
+            }
+        }
+        
+        // Emit event
+        emit UserDeleted(msg.sender);
+    }
+
+    /**
+     * @dev Delete another user (admin function - for now anyone can delete others)
+     * @param userAddress The address of the user to delete
+     */
+    function deleteOtherUser(address userAddress) external {
+        require(users[userAddress].registered, "User is not registered");
+        
+        // Mark user as not registered
+        users[userAddress].registered = false;
+        users[userAddress].ensName = "";
+        users[userAddress].avatarHash = "";
+        
+        // Remove from allUsers array
+        for (uint256 i = 0; i < allUsers.length; i++) {
+            if (allUsers[i] == userAddress) {
+                // Move the last element to the current position and pop
+                allUsers[i] = allUsers[allUsers.length - 1];
+                allUsers.pop();
+                break;
+            }
+        }
+        
+        // Emit event
+        emit UserDeleted(userAddress);
     }
 }
