@@ -41,7 +41,7 @@ export default function RootLayout({
         <Web3Provider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <Suspense fallback={null}>{children}</Suspense>
-            <Analytics />
+            {process.env.NODE_ENV === 'production' && <Analytics />}
           </ThemeProvider>
         </Web3Provider>
       </body>

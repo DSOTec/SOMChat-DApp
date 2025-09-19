@@ -10,19 +10,19 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { WalletConnectButton } from "@/components/wallet-connect-button"
-import { useAccount } from "wagmi"
 import { useUserRegistry } from "@/hooks/useUserRegistry"
+import { useWalletConnection } from "@/hooks/useWalletConnection"
 
 export function LandingPage() {
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const { address, isConnected } = useAccount()
+  const { address, isConnected } = useWalletConnection()
   const router = useRouter()
   const { useIsUserRegistered } = useUserRegistry()
   
   // Check if user is registered
   const { data: isRegistered, isLoading: isCheckingRegistration } = useIsUserRegistered(address)
 
-  // Handle routing after wallet connection
+  // Handle routing after confirmed wallet connection
   useEffect(() => {
     if (isConnected && address && !isCheckingRegistration) {
       if (isRegistered === false) {
@@ -155,7 +155,7 @@ export function LandingPage() {
                       }}
                       className="glow-hover text-base sm:text-lg px-8 sm:px-12 py-3 sm:py-4 h-auto font-semibold w-full sm:w-auto"
                     >
-                      {isRegistered === false ? 'Complete Registration' : 'Go to Dashboard'}
+                      {isRegistered === false ? 'Complete Registration' : 'Go to Chat'}
                     </Button>
                   )}
                 </div>

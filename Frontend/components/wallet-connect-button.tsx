@@ -3,8 +3,16 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { Button } from '@/components/ui/button'
 import { Wallet } from 'lucide-react'
+import { useWalletConnection } from '@/hooks/useWalletConnection'
 
 export function WalletConnectButton() {
+  const { initiateConnection } = useWalletConnection()
+
+  const handleConnectClick = (openConnectModal: () => void) => {
+    initiateConnection()
+    openConnectModal()
+  }
+
   return (
     <ConnectButton.Custom>
       {({
@@ -41,7 +49,7 @@ export function WalletConnectButton() {
               if (!connected) {
                 return (
                   <Button 
-                    onClick={openConnectModal} 
+                    onClick={() => handleConnectClick(openConnectModal)}
                     className="glow-hover text-base sm:text-lg px-8 sm:px-12 py-3 sm:py-4 h-auto font-semibold w-full sm:w-auto"
                   >
                     <Wallet className="w-4 h-4 mr-2" />

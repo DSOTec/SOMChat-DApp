@@ -15,7 +15,7 @@ import { TypingIndicator } from "@/components/typing-indicator"
 import { useTypingIndicator } from "@/hooks/useTypingIndicator"
 import { useUserRegistry } from "@/hooks/useUserRegistry"
 import { useChatApp } from "@/hooks/useChatApp"
-import { useRealtimeMessaging } from "@/hooks/useRealtimeMessaging"
+import { useOnChainMessaging, useDirectMessages, useGroupMessages } from "@/hooks/useOnChainMessaging"
 import { toast } from "sonner"
 import { Address } from "viem"
 import { shortenAddress, formatTimeAgo } from "@/lib/utils"
@@ -97,15 +97,13 @@ export function ChatDashboard() {
     error: contractError
   } = useChatApp()
 
-  // Real-time messaging hooks
+  // On-chain messaging hooks
   const { 
-    sendRealtimeMessage, 
-    sendRealtimeGroupMessage, 
-    useDirectMessages, 
-    useGroupMessages,
-    isLoading: isMessageLoading,
+    sendDirectMessage, 
+    sendGroupMessage: sendOnChainGroupMessage,
+    isPending: isMessagePending,
     error: messagingError
-  } = useRealtimeMessaging()
+  } = useOnChainMessaging()
 
   // Check if user is registered and redirect if not
   const { data: isRegistered } = useIsUserRegistered(address)
@@ -201,13 +199,13 @@ export function ChatDashboard() {
     }
   }, [totalGroups])
 
-  // Get real-time messages for selected chat
+  // Get on-chain messages for selected chat
   const selectedChatAddress = selectedChat && selectedChatType === 'user' ? selectedChat as Address : undefined
   const selectedGroupId = selectedChat && selectedChatType === 'group' ? parseInt(selectedChat) : undefined
   
-  // Use real-time messaging hooks
-  const directMessages = useDirectMessages(address!, selectedChatAddress!)
-  const groupMessages = useGroupMessages(selectedGroupId!)
+  // Use on-chain messaging hooks
+  const { messages: directMessages, isLoading: directLoading, refetch: refetchDirect } = useDirectMessages(address!, selectedChatAddress!)
+  const { messages: groupMessages, isLoading: groupLoading, refetch: refetchGroup } = useGroupMessages(selectedGroupId!)
 
   // Generate conversation ID for typing indicator
   const currentConversationId = selectedChatType === 'user' && selectedChatAddress && address
@@ -222,7 +220,7 @@ export function ChatDashboard() {
   // Load messages for selected conversation
   useEffect(() => {
     if (selectedChatType === 'user' && directMessages) {
-      const messageList: Message[] = directMessages.map((msg) => ({
+      const messageList: Message[] = directMessages.map((msg: any) => ({
         id: msg.id,
         sender: msg.sender,
         receiver: msg.receiver!,
@@ -233,7 +231,7 @@ export function ChatDashboard() {
       }))
       setMessages(messageList)
     } else if (selectedChatType === 'group' && groupMessages) {
-      const messageList: Message[] = groupMessages.map((msg) => ({
+      const messageList: Message[] = groupMessages.map((msg: any) => ({
         id: msg.id,
         sender: msg.sender,
         receiver: '0x0000000000000000000000000000000000000000' as Address, // No specific receiver for group messages
@@ -263,11 +261,14 @@ export function ChatDashboard() {
 
     try {
       if (selectedChatType === 'user') {
-        await sendRealtimeMessage(selectedChat as Address, messageInput.trim())
+        await sendDirectMessage(selectedChat as Address, messageInput.trim())
+        refetchDirect()
       } else if (selectedChatType === 'group') {
-        await sendRealtimeGroupMessage(parseInt(selectedChat), messageInput.trim())
+        await sendOnChainGroupMessage(parseInt(selectedChat), messageInput.trim())
+        refetchGroup()
       }
       setMessageInput("")
+      toast.success("Message sent!")
     } catch (err) {
       console.error("Send message error:", err)
       toast.error("Failed to send message")
@@ -282,7 +283,7 @@ export function ChatDashboard() {
     if (!address) return
 
     try {
-      const memberAddresses = groupData.selectedMembers as Address[]
+      const memberAddresses = groupData.selectedMembers.map(member => member as Address)
       await createGroup(groupData.name, groupData.avatar || "", memberAddresses)
       toast.success("Group created successfully!")
       setIsMobileSidebarOpen(false)
@@ -612,10 +613,10 @@ export function ChatDashboard() {
                 />
                 <Button 
                   onClick={handleSendMessage} 
-                  disabled={!messageInput.trim() || isMessageLoading || isContractPending || isContractConfirming} 
+                  disabled={!messageInput.trim() || isMessagePending || isContractPending || isContractConfirming} 
                   className="glow-hover shrink-0"
                 >
-                  {isMessageLoading || isContractPending || isContractConfirming ? (
+                  {isMessagePending || isContractPending || isContractConfirming ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                   ) : (
                     <Send className="w-4 h-4" />

@@ -18,7 +18,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { TypingIndicator } from "@/components/typing-indicator"
 import { useTypingIndicator } from "@/hooks/useTypingIndicator"
 import { useUserRegistry } from "@/hooks/useUserRegistry"
-import { useRealtimeMessaging } from "@/hooks/useRealtimeMessaging"
+import { useOnChainMessaging, useDirectMessages, useGroupMessages } from "@/hooks/useOnChainMessaging"
 import { useOptimizedContacts } from "@/hooks/useOptimizedContacts"
 import { toast } from "sonner"
 import { shortenAddress, formatTimeAgo } from "@/lib/utils"
@@ -99,15 +99,13 @@ export function OptimizedChatDashboard() {
   const { useIsUserRegistered, useUserDetails, deleteUser, deleteOtherUser, isPending: isDeletingUser } = useUserRegistry()
   const { useTotalGroups, createGroup, isPending: isCreatingGroup, isConfirmed } = useChatApp()
   
-  // Real-time messaging
+  // On-chain messaging
   const { 
-    sendRealtimeMessage, 
-    sendRealtimeGroupMessage, 
-    useDirectMessages, 
-    useGroupMessages,
-    isLoading: isMessageLoading,
+    sendDirectMessage, 
+    sendGroupMessage,
+    isPending: isMessageLoading,
     error: messagingError
-  } = useRealtimeMessaging()
+  } = useOnChainMessaging()
 
   // Check if user is registered and redirect if not
   const { data: isRegistered } = useIsUserRegistered(address)
@@ -146,8 +144,8 @@ export function OptimizedChatDashboard() {
         memberAddresses.push(address)
       }
       
-      // For now, we'll use empty string for avatar hash until IPFS upload is implemented
-      const avatarHash = ''
+      // Use the uploaded avatar hash from the group data
+      const avatarHash = groupData.avatar || ''
       
       await createGroup(groupData.name, memberAddresses, avatarHash)
     } catch (error) {
@@ -190,7 +188,8 @@ export function OptimizedChatDashboard() {
     }
   }, [userDetails])
 
-  // Load groups with optimization
+  // Load groups with optimization - using placeholder data for now
+  // TODO: Implement proper group details fetching with individual hooks
   useEffect(() => {
     if (totalGroups) {
       const groupList: LocalGroup[] = []
@@ -215,8 +214,8 @@ export function OptimizedChatDashboard() {
   const selectedGroupId = selectedChat && selectedChatType === 'group' ? parseInt(selectedChat) : undefined
   
   // Use real-time messaging hooks with conditional loading
-  const directMessages = useDirectMessages(address!, selectedChatAddress!)
-  const groupMessages = useGroupMessages(selectedGroupId!)
+  const { messages: directMessages } = useDirectMessages(address!, selectedChatAddress!)
+  const { messages: groupMessages } = useGroupMessages(selectedGroupId!)
 
   // Generate conversation ID for typing indicator
   const currentConversationId = useMemo(() => {
@@ -234,7 +233,7 @@ export function OptimizedChatDashboard() {
 
   // Load messages for selected conversation with optimization
   useEffect(() => {
-    if (selectedChatType === 'user' && directMessages) {
+    if (selectedChatType === 'user' && directMessages && Array.isArray(directMessages)) {
       const messageList: Message[] = directMessages.map((msg) => ({
         id: msg.id,
         sender: msg.sender,
@@ -244,7 +243,7 @@ export function OptimizedChatDashboard() {
         isSent: msg.sender === address
       }))
       setMessages(messageList)
-    } else if (selectedChatType === 'group' && groupMessages) {
+    } else if (selectedChatType === 'group' && groupMessages && Array.isArray(groupMessages)) {
       const messageList: Message[] = groupMessages.map((msg) => ({
         id: msg.id,
         sender: msg.sender,
@@ -272,9 +271,9 @@ export function OptimizedChatDashboard() {
 
     try {
       if (selectedChatType === 'user') {
-        await sendRealtimeMessage(selectedChat as Address, messageInput.trim())
+        await sendDirectMessage(selectedChat as Address, messageInput.trim())
       } else {
-        await sendRealtimeGroupMessage(parseInt(selectedChat), messageInput.trim())
+        await sendGroupMessage(parseInt(selectedChat), messageInput.trim())
       }
       setMessageInput("")
       setTypingStatus(false)
@@ -282,7 +281,7 @@ export function OptimizedChatDashboard() {
       console.error('Error sending message:', error)
       toast.error("Failed to send message")
     }
-  }, [messageInput, selectedChat, selectedChatType, sendRealtimeMessage, sendRealtimeGroupMessage, setTypingStatus])
+  }, [messageInput, selectedChat, selectedChatType, sendDirectMessage, sendGroupMessage, setTypingStatus])
 
   // Optimized typing handler with debouncing
   const handleTypingChange = useCallback((value: string) => {

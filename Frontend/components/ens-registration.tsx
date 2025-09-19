@@ -15,12 +15,14 @@ import Link from "next/link"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { WalletConnectButton } from "@/components/wallet-connect-button"
 import { useUserRegistry } from "@/hooks/useUserRegistry"
+import { uploadToIPFS, validateImageFile } from "@/lib/ipfs"
 import { toast } from "sonner"
 
 export function ENSRegistration() {
   const [ensName, setEnsName] = useState("")
   const [profileImage, setProfileImage] = useState<string | null>(null)
   const [avatarHash, setAvatarHash] = useState("")
+  const [isUploading, setIsUploading] = useState(false)
   
   const { address, isConnected } = useAccount()
   const { disconnect } = useDisconnect()
@@ -47,7 +49,7 @@ export function ENSRegistration() {
   // Redirect to dashboard if already registered
   useEffect(() => {
     if (isRegistered && address) {
-      router.push('/dashboard')
+      router.push('/chat')
     }
   }, [isRegistered, address, router])
 
@@ -56,7 +58,7 @@ export function ENSRegistration() {
     if (isConfirmed) {
       toast.success("Registration successful! Welcome to SOMChat!")
       refetchRegistration()
-      router.push('/dashboard')
+      router.push('/chat')
     }
   }, [isConfirmed, refetchRegistration, router])
 
@@ -67,14 +69,37 @@ export function ENSRegistration() {
     }
   }, [error])
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (file) {
+    if (!file) return
+
+    // Validate file
+    const validation = await validateImageFile(file)
+    if (!validation.valid) {
+      toast.error(validation.error || 'Invalid file')
+      return
+    }
+
+    setIsUploading(true)
+    try {
+      // Show preview immediately
       const reader = new FileReader()
       reader.onload = (e) => {
         setProfileImage(e.target?.result as string)
       }
       reader.readAsDataURL(file)
+
+      // Upload to IPFS
+      const result = await uploadToIPFS(file)
+      setAvatarHash(result.hash)
+      toast.success('Image uploaded to IPFS successfully!')
+    } catch (error) {
+      console.error('Upload error:', error)
+      toast.error('Failed to upload image to IPFS')
+      setProfileImage(null)
+      setAvatarHash('')
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -213,10 +238,16 @@ export function ENSRegistration() {
                     <div className="flex-1 w-full sm:w-auto text-center sm:text-left">
                       <Label
                         htmlFor="profileImage"
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-background hover:bg-muted/50 cursor-pointer transition-colors text-sm"
+                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-background hover:bg-muted/50 cursor-pointer transition-colors text-sm ${
+                          isUploading ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
                       >
-                        <Upload className="w-4 h-4" />
-                        Upload Image
+                        {isUploading ? (
+                          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Upload className="w-4 h-4" />
+                        )}
+                        {isUploading ? 'Uploading...' : 'Upload Image'}
                       </Label>
                       <Input
                         id="profileImage"
@@ -224,6 +255,7 @@ export function ENSRegistration() {
                         accept="image/*"
                         onChange={handleImageUpload}
                         className="hidden"
+                        disabled={isUploading}
                       />
                       <p className="text-xs text-muted-foreground mt-1">Stored securely on IPFS</p>
                     </div>
@@ -235,13 +267,13 @@ export function ENSRegistration() {
                   type="submit"
                   className="w-full glow-hover text-sm sm:text-base py-2 sm:py-3"
                   size="lg"
-                  disabled={!ensName.trim() || isPending || isConfirming}
+                  disabled={!ensName.trim() || isPending || isConfirming || isUploading}
                 >
-                  {isPending || isConfirming ? (
+                  {isPending || isConfirming || isUploading ? (
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                       <span className="text-sm sm:text-base">
-                        {isPending ? "Confirming..." : "Processing..."}
+                        {isUploading ? "Uploading..." : isPending ? "Confirming..." : "Processing..."}
                       </span>
                     </div>
                   ) : (

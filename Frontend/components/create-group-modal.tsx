@@ -11,6 +11,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Upload, Users } from "lucide-react"
+import { uploadToIPFS, validateImageFile } from "@/lib/ipfs"
+import { toast } from "sonner"
 
 interface Contact {
   id: string
@@ -33,17 +35,42 @@ interface CreateGroupModalProps {
 export function CreateGroupModal({ isOpen, onClose, contacts, onCreateGroup }: CreateGroupModalProps) {
   const [groupName, setGroupName] = useState("")
   const [groupAvatar, setGroupAvatar] = useState<string | null>(null)
+  const [avatarHash, setAvatarHash] = useState("")
   const [selectedMembers, setSelectedMembers] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (file) {
+    if (!file) return
+
+    // Validate file
+    const validation = await validateImageFile(file)
+    if (!validation.valid) {
+      toast.error(validation.error || 'Invalid file')
+      return
+    }
+
+    setIsUploading(true)
+    try {
+      // Show preview immediately
       const reader = new FileReader()
       reader.onload = (e) => {
         setGroupAvatar(e.target?.result as string)
       }
       reader.readAsDataURL(file)
+
+      // Upload to IPFS
+      const result = await uploadToIPFS(file)
+      setAvatarHash(result.hash)
+      toast.success('Group avatar uploaded successfully!')
+    } catch (error) {
+      console.error('Upload error:', error)
+      toast.error('Failed to upload group avatar')
+      setGroupAvatar(null)
+      setAvatarHash('')
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -59,26 +86,30 @@ export function CreateGroupModal({ isOpen, onClose, contacts, onCreateGroup }: C
 
     setIsLoading(true)
 
-    // Simulate group creation
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    try {
+      await onCreateGroup({
+        name: groupName,
+        avatar: avatarHash || null,
+        selectedMembers,
+      })
 
-    onCreateGroup({
-      name: groupName,
-      avatar: groupAvatar,
-      selectedMembers,
-    })
-
-    // Reset form
-    setGroupName("")
-    setGroupAvatar(null)
-    setSelectedMembers([])
-    setIsLoading(false)
-    onClose()
+      // Reset form
+      setGroupName("")
+      setGroupAvatar(null)
+      setAvatarHash("")
+      setSelectedMembers([])
+      onClose()
+    } catch (error) {
+      console.error('Group creation failed:', error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleClose = () => {
     setGroupName("")
     setGroupAvatar(null)
+    setAvatarHash("")
     setSelectedMembers([])
     onClose()
   }
@@ -108,12 +139,18 @@ export function CreateGroupModal({ isOpen, onClose, contacts, onCreateGroup }: C
               <div className="flex-1 w-full sm:w-auto text-center sm:text-left">
                 <Label
                   htmlFor="groupAvatar"
-                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-background hover:bg-muted/50 cursor-pointer transition-colors text-sm"
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-background hover:bg-muted/50 cursor-pointer transition-colors text-sm ${
+                    isUploading ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
                 >
-                  <Upload className="w-4 h-4" />
-                  Upload Avatar
+                  {isUploading ? (
+                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4" />
+                  )}
+                  {isUploading ? 'Uploading...' : 'Upload Avatar'}
                 </Label>
-                <Input id="groupAvatar" type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                <Input id="groupAvatar" type="file" accept="image/*" onChange={handleImageUpload} className="hidden" disabled={isUploading} />
                 <p className="text-xs text-muted-foreground mt-1">Optional group image</p>
               </div>
             </div>
@@ -189,12 +226,12 @@ export function CreateGroupModal({ isOpen, onClose, contacts, onCreateGroup }: C
               <Button
                 type="submit"
                 className="flex-1 glow-hover text-sm sm:text-base"
-                disabled={!groupName.trim() || selectedMembers.length === 0 || isLoading}
+                disabled={!groupName.trim() || selectedMembers.length === 0 || isLoading || isUploading}
               >
-                {isLoading ? (
+                {isLoading || isUploading ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    Creating...
+                    {isUploading ? 'Uploading...' : 'Creating...'}
                   </div>
                 ) : (
                   "Create Group"

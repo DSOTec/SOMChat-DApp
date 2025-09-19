@@ -11,7 +11,9 @@ export async function fetchUserDetails(userAddress: Address): Promise<[string, s
       functionName: 'getUserDetails',
       args: [userAddress],
     })
-    return result as [string, string]
+    // Extract only the first two values (ensName, avatarHash) and ignore the registered boolean
+    const [ensName, avatarHash] = result as [string, string, boolean]
+    return [ensName, avatarHash]
   } catch (error) {
     console.error('Error fetching user details:', error)
     return null
