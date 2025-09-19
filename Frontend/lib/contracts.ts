@@ -2,8 +2,8 @@ import { Address } from 'viem'
 
 // Contract addresses on Sepolia
 export const CONTRACTS = {
-  CHAT_APP: '0x61e7Ec55c10A779D8c39F61e8184Ac654781BA1A' as Address,
-  USER_REGISTRY: '0xf078dbeB5c2FF1dB3063564077D71A3983e10AEb' as Address,
+  CHAT_APP: '0x0364A58DA50c9970fc7eeaAfA731B7ff26caA01b' as Address,
+  USER_REGISTRY: '0xc245cB4762c771023ABDE1c4E8730B4cF842906b' as Address,
 } as const
 
 // ChatApp ABI
@@ -139,6 +139,38 @@ export const CHAT_APP_ABI = [
       { name: 'message', type: 'string', indexed: false },
       { name: 'timestamp', type: 'uint256', indexed: false }
     ]
+  },
+  {
+    type: 'event',
+    name: 'OraclePricesPosted',
+    inputs: [
+      { name: 'groupId', type: 'uint256', indexed: true },
+      { name: 'timestamp', type: 'uint256', indexed: false }
+    ]
+  },
+  {
+    type: 'function',
+    name: 'postPriceToGroup',
+    inputs: [{ name: 'groupId', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable'
+  },
+  {
+    type: 'function',
+    name: 'getLatestPrice',
+    inputs: [{ name: 'priceFeed', type: 'address' }],
+    outputs: [{ name: '', type: 'int256' }],
+    stateMutability: 'view'
+  },
+  {
+    type: 'function',
+    name: 'isOracleMessage',
+    inputs: [
+      { name: 'groupId', type: 'uint256' },
+      { name: 'messageIndex', type: 'uint256' }
+    ],
+    outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'view'
   }
 ] as const
 

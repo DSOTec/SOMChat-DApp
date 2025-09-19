@@ -1,10 +1,11 @@
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi'
 import { Address } from 'viem'
 import { CONTRACTS, CHAT_APP_ABI } from '@/lib/contracts'
 import { Message, Group } from '@/lib/types'
 
 export function useChatApp() {
   const { writeContract, data: hash, isPending, error } = useWriteContract()
+  const { address } = useAccount()
 
   // Send a direct message
   const sendMessage = async (to: Address, content: string) => {
@@ -27,13 +28,58 @@ export function useChatApp() {
   }
 
   // Create a new group
-  const createGroup = async (name: string, members: Address[], avatarHash: string = '') => {
-    return writeContract({
-      address: CONTRACTS.CHAT_APP,
-      abi: CHAT_APP_ABI,
-      functionName: 'createGroup',
-      args: [name, avatarHash, members],
+  const createGroup = async (name: string, avatarHash: string, members: Address[]) => {
+    console.log('useChatApp createGroup called with:', {
+      name,
+      avatarHash,
+      members,
+      contractAddress: CONTRACTS.CHAT_APP
     })
+    
+    // Check wallet connection
+    if (!address) {
+      throw new Error('Wallet not connected')
+    }
+    
+    // Validate parameters
+    if (!name || name.trim().length === 0) {
+      throw new Error('Group name is required')
+    }
+    
+    if (!members || members.length === 0) {
+      throw new Error('At least one member is required')
+    }
+    
+    console.log('Wallet connected:', address)
+    console.log('Contract address:', CONTRACTS.CHAT_APP)
+    console.log('Function args:', [name, avatarHash, members])
+    
+    try {
+      const result = await writeContract({
+        address: CONTRACTS.CHAT_APP,
+        abi: CHAT_APP_ABI,
+        functionName: 'createGroup',
+        args: [name, avatarHash, members],
+      })
+      console.log('writeContract result:', result)
+      
+      // writeContract returns void, so we check if the transaction was submitted
+      // The actual transaction hash will be available in the 'hash' variable from useWriteContract
+      
+      return result
+    } catch (error: any) {
+      console.error('writeContract error in useChatApp:', error)
+      
+      if (error?.message?.includes('User rejected')) {
+        throw new Error('Transaction was rejected by user')
+      } else if (error?.message?.includes('insufficient funds')) {
+        throw new Error('Insufficient funds for gas fees')
+      } else if (error?.shortMessage) {
+        throw new Error(`Contract error: ${error.shortMessage}`)
+      }
+      
+      throw error
+    }
   }
 
   // Get conversation between two users

@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useAccount } from 'wagmi'
+import { useAccount, useWatchContractEvent } from 'wagmi'
 import { Address } from 'viem'
 import { useChatApp } from './useChatApp'
 import { OnChainMessage, convertBlockchainMessage } from '@/lib/messaging'
 import { fetchUserDetails, formatEnsName } from '@/lib/userUtils'
 import { shortenAddress } from '@/lib/utils'
+import { CONTRACTS, CHAT_APP_ABI } from '@/lib/contracts'
 
 export function useOnChainMessaging() {
   const { address } = useAccount()
@@ -50,6 +51,40 @@ export function useDirectMessages(user1?: Address, user2?: Address) {
   } = useChatApp()
   const { data: conversationData, refetch } = useConversation(user1, user2)
 
+  // Watch for new direct messages in real-time
+  useWatchContractEvent({
+    address: CONTRACTS.CHAT_APP,
+    abi: CHAT_APP_ABI,
+    eventName: 'MessageSent',
+    args: user1 && user2 ? {
+      from: user1,
+      to: user2
+    } : undefined,
+    onLogs: (logs) => {
+      console.log('New direct message detected:', logs)
+      // Refetch messages when new ones are detected
+      refetch()
+    },
+    enabled: !!(user1 && user2),
+  })
+
+  // Also watch for messages in the reverse direction
+  useWatchContractEvent({
+    address: CONTRACTS.CHAT_APP,
+    abi: CHAT_APP_ABI,
+    eventName: 'MessageSent',
+    args: user1 && user2 ? {
+      from: user2,
+      to: user1
+    } : undefined,
+    onLogs: (logs) => {
+      console.log('New direct message detected (reverse):', logs)
+      // Refetch messages when new ones are detected
+      refetch()
+    },
+    enabled: !!(user1 && user2),
+  })
+
   useEffect(() => {
     const loadMessages = async () => {
       if (!conversationData || !address) {
@@ -92,7 +127,7 @@ export function useDirectMessages(user1?: Address, user2?: Address) {
   return { messages, isLoading, refetch }
 }
 
-// Hook to get group messages
+// Hook to get group messages with oracle detection and real-time updates
 export function useGroupMessages(groupId?: number) {
   const [messages, setMessages] = useState<OnChainMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -102,6 +137,34 @@ export function useGroupMessages(groupId?: number) {
     useGroupConversation
   } = useChatApp()
   const { data: groupConversationData, refetch } = useGroupConversation(groupId)
+
+  // Watch for new group messages in real-time
+  useWatchContractEvent({
+    address: CONTRACTS.CHAT_APP,
+    abi: CHAT_APP_ABI,
+    eventName: 'GroupMessageSent',
+    args: groupId ? { groupId: BigInt(groupId) } : undefined,
+    onLogs: (logs) => {
+      console.log('New group message detected:', logs)
+      // Refetch messages when new ones are detected
+      refetch()
+    },
+    enabled: !!groupId,
+  })
+
+  // Watch for oracle price updates
+  useWatchContractEvent({
+    address: CONTRACTS.CHAT_APP,
+    abi: CHAT_APP_ABI,
+    eventName: 'OraclePricesPosted',
+    args: groupId ? { groupId: BigInt(groupId) } : undefined,
+    onLogs: (logs) => {
+      console.log('Oracle prices posted:', logs)
+      // Refetch messages when oracle updates are detected
+      refetch()
+    },
+    enabled: !!groupId,
+  })
 
   useEffect(() => {
     const loadMessages = async () => {
@@ -118,21 +181,33 @@ export function useGroupMessages(groupId?: number) {
           onChainMessage.groupId = groupId
           onChainMessage.type = 'group'
           
-          // Fetch sender details for display name
-          try {
-            const senderDetails = await fetchUserDetails(msg.sender)
-            onChainMessage.senderName = senderDetails?.[0] 
-              ? formatEnsName(senderDetails[0]) 
-              : formatEnsName(shortenAddress(msg.sender))
-          } catch {
-            onChainMessage.senderName = formatEnsName(shortenAddress(msg.sender))
+          // Check if this is an oracle message (sender is zero address)
+          const isOracle = msg.sender === '0x0000000000000000000000000000000000000000'
+          onChainMessage.isOracle = isOracle
+          
+          // Set sender name based on whether it's oracle or user
+          if (isOracle) {
+            onChainMessage.senderName = 'Oracle Bot'
+          } else {
+            try {
+              const senderDetails = await fetchUserDetails(msg.sender)
+              onChainMessage.senderName = senderDetails?.[0] 
+                ? formatEnsName(senderDetails[0]) 
+                : formatEnsName(shortenAddress(msg.sender))
+            } catch {
+              onChainMessage.senderName = formatEnsName(shortenAddress(msg.sender))
+            }
           }
           
           return onChainMessage
         })
 
         const processedMessages = await Promise.all(messagePromises)
-        setMessages(processedMessages)
+        // Sort messages by timestamp ascending
+        const sortedMessages = processedMessages.sort((a, b) => 
+          Number(a.timestamp) - Number(b.timestamp)
+        )
+        setMessages(sortedMessages)
       } catch (error) {
         console.error('Error loading group messages:', error)
         setMessages([])

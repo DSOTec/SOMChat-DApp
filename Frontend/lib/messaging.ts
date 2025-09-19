@@ -11,6 +11,7 @@ export interface OnChainMessage {
   conversationId: string
   isSent: boolean
   senderName?: string
+  isOracle?: boolean
 }
 
 // Generate conversation ID for direct messages

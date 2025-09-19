@@ -3,13 +3,8 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { Button } from '@/components/ui/button'
 import { Wallet } from 'lucide-react'
-import { useWalletConnection } from '@/hooks/useWalletConnection'
-
 export function WalletConnectButton() {
-  const { initiateConnection } = useWalletConnection()
-
   const handleConnectClick = (openConnectModal: () => void) => {
-    initiateConnection()
     openConnectModal()
   }
 

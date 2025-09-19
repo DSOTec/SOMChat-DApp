@@ -16,6 +16,7 @@ import { useTypingIndicator } from "@/hooks/useTypingIndicator"
 import { useUserRegistry } from "@/hooks/useUserRegistry"
 import { useChatApp } from "@/hooks/useChatApp"
 import { useOnChainMessaging, useDirectMessages, useGroupMessages } from "@/hooks/useOnChainMessaging"
+import { useAllGroupDetails } from "@/hooks/useGroupDetails"
 import { toast } from "sonner"
 import { Address } from "viem"
 import { shortenAddress, formatTimeAgo } from "@/lib/utils"
@@ -65,6 +66,7 @@ interface Message {
   timestamp: bigint
   isSent: boolean
   senderName?: string
+  isOracle?: boolean
 }
 
 export function ChatDashboard() {
@@ -179,25 +181,26 @@ export function ChatDashboard() {
     loadContactsWithDetails()
   }, [allUsers, address])
 
-  // Load groups (placeholder for now - will be implemented in Phase 2)
+  // Use the group details hook
+  const { allGroups, isLoading: groupsLoading } = useAllGroupDetails(totalGroups)
+
+  // Load groups with actual details
   useEffect(() => {
-    if (totalGroups) {
-      // For now, we'll create placeholder groups
-      // In Phase 2, we'll fetch actual group details
-      const groupList: Group[] = []
-      for (let i = 1; i <= Number(totalGroups); i++) {
-        groupList.push({
-          id: i,
-          name: `Group ${i}`,
-          memberCount: 0,
-          members: [],
-          lastMessage: "Group conversation",
-          timestamp: "1h"
-        })
-      }
+    if (allGroups.length > 0) {
+      const groupList: Group[] = allGroups.map(group => ({
+        id: group.id,
+        name: group.name,
+        memberCount: group.memberCount,
+        members: group.members,
+        lastMessage: "Group conversation",
+        timestamp: "1h",
+        avatar: group.avatarHash ? `https://gateway.pinata.cloud/ipfs/${group.avatarHash}` : undefined
+      }))
       setGroups(groupList)
+    } else if (totalGroups && Number(totalGroups) === 0) {
+      setGroups([])
     }
-  }, [totalGroups])
+  }, [allGroups, totalGroups])
 
   // Get on-chain messages for selected chat
   const selectedChatAddress = selectedChat && selectedChatType === 'user' ? selectedChat as Address : undefined
@@ -227,8 +230,11 @@ export function ChatDashboard() {
         content: msg.content,
         timestamp: BigInt(Math.floor(msg.timestamp.getTime() / 1000)),
         isSent: msg.isSent,
-        senderName: msg.senderName
+        senderName: msg.senderName,
+        isOracle: msg.isOracle || false
       }))
+      // Sort messages by timestamp ascending
+      messageList.sort((a, b) => Number(a.timestamp) - Number(b.timestamp))
       setMessages(messageList)
     } else if (selectedChatType === 'group' && groupMessages) {
       const messageList: Message[] = groupMessages.map((msg: any) => ({
@@ -238,8 +244,11 @@ export function ChatDashboard() {
         content: msg.content,
         timestamp: BigInt(Math.floor(msg.timestamp.getTime() / 1000)),
         isSent: msg.isSent,
-        senderName: msg.senderName
+        senderName: msg.senderName,
+        isOracle: msg.isOracle || false
       }))
+      // Sort messages by timestamp ascending
+      messageList.sort((a, b) => Number(a.timestamp) - Number(b.timestamp))
       setMessages(messageList)
     } else {
       setMessages([])
@@ -262,10 +271,16 @@ export function ChatDashboard() {
     try {
       if (selectedChatType === 'user') {
         await sendDirectMessage(selectedChat as Address, messageInput.trim())
-        refetchDirect()
+        // Wait for transaction confirmation before refetching
+        setTimeout(() => {
+          refetchDirect()
+        }, 2000)
       } else if (selectedChatType === 'group') {
         await sendOnChainGroupMessage(parseInt(selectedChat), messageInput.trim())
-        refetchGroup()
+        // Wait for transaction confirmation before refetching
+        setTimeout(() => {
+          refetchGroup()
+        }, 2000)
       }
       setMessageInput("")
       toast.success("Message sent!")
@@ -280,16 +295,84 @@ export function ChatDashboard() {
     avatar: string | null
     selectedMembers: string[]
   }) => {
-    if (!address) return
+    if (!address) {
+      toast.error("Wallet not connected")
+      return
+    }
+
+    if (!groupData.name.trim()) {
+      toast.error("Group name is required")
+      return
+    }
+
+    if (groupData.selectedMembers.length === 0) {
+      toast.error("Please select at least one member")
+      return
+    }
+
+    console.log('Creating group with data:', {
+      name: groupData.name,
+      avatar: groupData.avatar,
+      members: groupData.selectedMembers,
+      creator: address
+    })
 
     try {
-      const memberAddresses = groupData.selectedMembers.map(member => member as Address)
-      await createGroup(groupData.name, groupData.avatar || "", memberAddresses)
-      toast.success("Group created successfully!")
+      // Convert contact IDs to actual wallet addresses
+      const memberAddresses = groupData.selectedMembers.map(contactId => {
+        const contact = contacts.find(c => c.id === contactId)
+        if (!contact) {
+          throw new Error(`Contact not found for ID: ${contactId}`)
+        }
+        console.log('Converting contact:', contact.ensName, 'address:', contact.address)
+        return contact.address
+      })
+      
+      console.log('Calling createGroup with correct order:', {
+        name: groupData.name,
+        avatarHash: groupData.avatar || "",
+        members: memberAddresses
+      })
+      
+      console.log('Parameters being passed:', {
+        param1_name: groupData.name,
+        param2_avatarHash: groupData.avatar || "",
+        param3_members: memberAddresses
+      })
+      
+      const result = await createGroup(groupData.name, groupData.avatar || "", memberAddresses)
+      
+      // Wait for the transaction to be submitted
+      if (result) {
+        console.log('Transaction hash:', result)
+      } else {
+        throw new Error('Transaction failed - no result returned')
+      }
+      console.log('Group creation result:', result)
+      
+      toast.success("Group creation transaction submitted!")
       setIsMobileSidebarOpen(false)
-    } catch (err) {
+      
+      // Wait for transaction confirmation
+      setTimeout(() => {
+        toast.success("Group created successfully!")
+        window.location.reload()
+      }, 3000)
+    } catch (err: any) {
       console.error("Create group error:", err)
-      toast.error("Failed to create group")
+      
+      // More detailed error handling
+      if (err?.message?.includes('user rejected')) {
+        toast.error("Transaction was rejected")
+      } else if (err?.message?.includes('insufficient funds')) {
+        toast.error("Insufficient funds for transaction")
+      } else if (err?.shortMessage) {
+        toast.error(`Transaction failed: ${err.shortMessage}`)
+      } else if (err?.message) {
+        toast.error(`Error: ${err.message}`)
+      } else {
+        toast.error("Failed to create group")
+      }
     }
   }
 
@@ -548,8 +631,35 @@ export function ChatDashboard() {
                   </div>
                 ) : (
                   messages.map((message) => {
+                    // Handle oracle messages differently
+                    if (message.isOracle) {
+                      return (
+                        <div key={message.id} className="flex justify-center my-4">
+                          <div className="flex flex-col max-w-[90%] sm:max-w-[80%]">
+                            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-2xl px-4 py-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
+                                  <span className="text-white text-xs font-bold">🤖</span>
+                                </div>
+                                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                                  Oracle Bot
+                                </span>
+                                <span className="text-xs text-blue-600 dark:text-blue-400">
+                                  {new Date(Number(message.timestamp) * 1000).toLocaleTimeString()}
+                                </span>
+                              </div>
+                              <div className="text-sm text-blue-800 dark:text-blue-200 italic font-mono whitespace-pre-wrap">
+                                {message.content}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    // Handle regular user messages
                     const senderContact = contacts.find(c => c.address === message.sender)
-                    const senderName = senderContact?.ensName || formatEnsName(shortenAddress(message.sender))
+                    const senderName = message.senderName || senderContact?.ensName || formatEnsName(shortenAddress(message.sender))
                     const senderAvatar = senderContact?.avatar
                     
                     return (

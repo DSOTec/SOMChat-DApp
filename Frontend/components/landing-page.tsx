@@ -11,11 +11,11 @@ import { useRouter } from "next/navigation"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { WalletConnectButton } from "@/components/wallet-connect-button"
 import { useUserRegistry } from "@/hooks/useUserRegistry"
-import { useWalletConnection } from "@/hooks/useWalletConnection"
+import { useAccount } from "wagmi"
 
 export function LandingPage() {
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const { address, isConnected } = useWalletConnection()
+  const { address, isConnected } = useAccount()
   const router = useRouter()
   const { useIsUserRegistered } = useUserRegistry()
   
