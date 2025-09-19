@@ -4,29 +4,48 @@ import "@nomicfoundation/hardhat-toolbox";
 import { vars } from "hardhat/config";
 
 const PRIVATE_KEY = vars.get("PRIVATE_KEY");
+const ETHERSCAN_API_KEY = vars.get("ETHERSCAN_API_KEY", "");
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.20",
+  solidity: {
+    version: "0.8.20",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+    },
+  },
   networks: {
-    liskTestnet: {
-      url: "https://rpc.sepolia-api.lisk.com",
+    hardhat: {
+      chainId: 31337,
+    },
+    sepolia: {
+      url: "https://eth-sepolia.g.alchemy.com/v2/R05w09aACy83F9wqABQSV",
       accounts: [PRIVATE_KEY],
+      chainId: 11155111,
+      gasPrice: 20000000000, // 20 gwei
+    },
+    // Alternative RPC endpoints for Sepolia
+    sepoliaAlchemy: {
+      url: "https://eth-sepolia.g.alchemy.com/v2/demo",
+      accounts: [PRIVATE_KEY],
+      chainId: 11155111,
+    },
+    sepoliaPublic: {
+      url: "https://rpc.sepolia.org",
+      accounts: [PRIVATE_KEY],
+      chainId: 11155111,
     },
   },
   etherscan: {
     apiKey: {
-      "lisk-sepolia": "123",
+      sepolia: ETHERSCAN_API_KEY,
     },
-    customChains: [
-      {
-        network: "lisk-sepolia",
-        chainId: 4202,
-        urls: {
-          apiURL: "https://sepolia-blockscout.lisk.com/api",
-          browserURL: "https://sepolia-blockscout.lisk.com",
-        },
-      },
-    ],
+  },
+  gasReporter: {
+    enabled: process.env.REPORT_GAS !== undefined,
+    currency: "USD",
   },
   sourcify: {
     enabled: false,

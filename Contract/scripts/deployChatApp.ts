@@ -11,8 +11,9 @@ async function main(): Promise<string> {
   // Get the contract factory
   const ChatApp = await ethers.getContractFactory("ChatApp");
 
-  // Deploy the contract
-  const chatApp = await ChatApp.deploy();
+  // Deploy the contract with automation interval (300 seconds = 5 minutes)
+  const automationInterval = 300; // 5 minutes in seconds
+  const chatApp = await ChatApp.deploy(automationInterval);
 
   // Wait for deployment to complete
   await chatApp.waitForDeployment();
@@ -21,7 +22,10 @@ async function main(): Promise<string> {
   const contractAddress = await chatApp.getAddress();
 
   console.log("ChatApp deployed to:", contractAddress);
-  console.log("Transaction hash:", chatApp.deploymentTransaction().hash);
+  const deployTx = chatApp.deploymentTransaction();
+  if (deployTx) {
+    console.log("Transaction hash:", deployTx.hash);
+  }
 
   // Verify deployment by checking if contract exists
   const code = await provider.getCode(contractAddress);
@@ -40,7 +44,7 @@ async function main(): Promise<string> {
     try {
       await run("verify:verify", {
         address: contractAddress,
-        constructorArguments: [], // ChatApp has no constructor arguments
+        constructorArguments: [automationInterval], // ChatApp constructor requires interval parameter
       });
       console.log("Contract verified successfully!");
     } catch (error: any) {

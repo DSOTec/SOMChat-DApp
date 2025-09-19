@@ -76,8 +76,9 @@ async function main(): Promise<DeploymentResult[]> {
     const userRegistry = await deployContract("UserRegistry");
     deployments.push(userRegistry);
 
-    // Deploy ChatApp (no dependencies on UserRegistry in constructor)
-    const chatApp = await deployContract("ChatApp");
+    // Deploy ChatApp with automation interval (300 seconds = 5 minutes)
+    const automationInterval = 300;
+    const chatApp = await deployContract("ChatApp", [automationInterval]);
     deployments.push(chatApp);
 
     return deployments;
