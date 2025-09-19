@@ -143,6 +143,69 @@ export function useChatApp() {
     })
   }
 
+  // Post price data to a group (manual trigger)
+  const postPriceToGroup = async (groupId: number) => {
+    return writeContract({
+      address: CONTRACTS.CHAT_APP,
+      abi: CHAT_APP_ABI,
+      functionName: 'postPriceToGroup',
+      args: [BigInt(groupId)],
+    })
+  }
+
+  // Get latest price from a Chainlink feed
+  const useLatestPrice = (feedAddress?: Address) => {
+    return useReadContract({
+      address: CONTRACTS.CHAT_APP,
+      abi: CHAT_APP_ABI,
+      functionName: 'getLatestPrice',
+      args: feedAddress ? [feedAddress] : undefined,
+      query: {
+        enabled: !!feedAddress,
+      },
+    })
+  }
+
+  // Check if a message is from the oracle
+  const useIsOracleMessage = (sender?: Address) => {
+    return useReadContract({
+      address: CONTRACTS.CHAT_APP,
+      abi: CHAT_APP_ABI,
+      functionName: 'isOracleMessage',
+      args: sender ? [sender] : undefined,
+      query: {
+        enabled: !!sender,
+      },
+    })
+  }
+
+  // Get automation interval
+  const useAutomationInterval = () => {
+    return useReadContract({
+      address: CONTRACTS.CHAT_APP,
+      abi: CHAT_APP_ABI,
+      functionName: 'interval',
+    })
+  }
+
+  // Get last automation timestamp
+  const useLastTimeStamp = () => {
+    return useReadContract({
+      address: CONTRACTS.CHAT_APP,
+      abi: CHAT_APP_ABI,
+      functionName: 'lastTimeStamp',
+    })
+  }
+
+  // Get default group ID for automation
+  const useDefaultGroupId = () => {
+    return useReadContract({
+      address: CONTRACTS.CHAT_APP,
+      abi: CHAT_APP_ABI,
+      functionName: 'defaultGroupId',
+    })
+  }
+
   // Wait for transaction confirmation
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash,
@@ -152,11 +215,17 @@ export function useChatApp() {
     sendMessage,
     sendGroupMessage,
     createGroup,
+    postPriceToGroup,
     useConversation,
     useGroupConversation,
     useGroupDetails,
     useIsGroupMember,
     useTotalGroups,
+    useLatestPrice,
+    useIsOracleMessage,
+    useAutomationInterval,
+    useLastTimeStamp,
+    useDefaultGroupId,
     isPending,
     isConfirming,
     isConfirmed,
